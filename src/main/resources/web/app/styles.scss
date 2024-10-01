@@ -1,0 +1,108 @@
+html {
+  font-family: 'Public Sans', sans-serif;
+  font-size: 16px;
+  /*-webkit-font-smoothing: antialiased;*/
+  height: 100%;
+  min-height: 100%;
+  line-height: 1.5;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* document root element */
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  min-height: 100%;
+  font-size: 16px;
+}
+/* module/component elements
+
+   These are mostly HTML5 semantic elements, such as article, header etc. and their logical class counterparts.
+
+   Use `rem` for font sizing.
+*/
+header, footer {}
+
+/* text/type elements
+
+   Elements which show textual content. Use `em` for font sizing.
+ */
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-family: 'Public Sans', 'Public Sans', Arial, sans-serif;
+}
+
+h1 {
+  font-weight: 800;
+  font-size: 3em;
+}
+
+h2 {
+  font-weight: 700;
+  font-size: 2.25em;
+  padding: .3em 0 .3em 0;
+  line-height: 1.2;
+}
+
+h3 {
+  font-weight: 600;
+  font-size: 1.5em;
+  padding: .2em 0 .2em 0;
+}
+
+h4 {
+  font-weight: 600;
+  font-size: 1.125em;
+}
+
+h5 {
+  font-weight: 600;
+  font-size: 1em;
+}
+
+h6 {
+  font-weight: 300;
+  font-size: 0.875em;
+}
+
+p {
+  font-family: 'Piazzolla', serif;
+}
+
+/* list elements are easier to work through resetting instead of normalization */
+ol,ul {
+  margin: 0;
+  padding: 0
+}
+
+/* form elements */
+button, input, optgroup, select, textarea {
+  font-family: 'Public Sans', sans-serif;
+}
+
+/* main structure of the page */
+#container {  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 4em 1fr 4em;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "header"
+    "content"
+    "footer";
+}
+
+#header {
+  grid-area: header;
+  background-color: black;
+}
+
+#content { grid-area: content; }
+
+#footer {
+  grid-area: footer;
+  background-color: darkslategray;
+}
+

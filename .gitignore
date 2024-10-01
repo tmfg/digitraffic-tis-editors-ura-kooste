@@ -1,0 +1,32 @@
+# various IDE temp directories etc.
+target/
+classes/
+checkouts/
+/logs/
+.lsp/
+out/
+bin/
+build/
+.mvn/wrapper/maven-wrapper.jar
+
+# JetBrains IDE metadata
+*.iml
+.idea/
+
+# Allow all and any scratch files to exist in project root
+scratch.*
+
+# macOS meta files
+.DS_Store
+
+# LocalStack's volume directory
+volume/
+
+# hide any files explicitly named 'private'
+*.private.*
+
+# .env is meant for local development parameters only
+.env
+
+# Quarkus Web bundler uses node_modules for dependencies
+node_modules/
