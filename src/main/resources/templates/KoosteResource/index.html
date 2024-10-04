@@ -1,0 +1,10 @@
+{#include main.html}
+{#title}Greeting{/title}
+
+<h1>Kooste</h1>
+
+<ul>
+{#for publication in publications}
+  <li>{publication.name} {publication.timestamp} {publication.url}</li>
+{/for}
+</ul>
