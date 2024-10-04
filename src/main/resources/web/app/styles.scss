@@ -22,7 +22,35 @@ body {
 
    Use `rem` for font sizing.
 */
-header, footer {}
+header {
+  #common-sites {
+    padding: 0.5rem 2rem 0.5rem 2rem;
+    background-color: black;
+    height: 28px; /* this is a layout computed value, should replace with relative unit */
+  }
+  #site-navigation {
+    padding: 0 2rem 0 2rem;
+    background-color: white;
+    height: 56px; /* this is a layout computed value, should replace with relative unit */
+    justify-content: flex-start;
+    flex-direction: row;
+    box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 4px -1px, rgba(0, 0, 0, 0.14) 0px 4px 5px 0px, rgba(0, 0, 0, 0.12) 0px 1px 10px 0px
+  }
+  nav {
+    display: inline-flex;
+    ul {
+      display: inline-flex;
+      li {
+        display: inline-flex;
+        align-self: center;
+      }
+    }
+  }
+}
+.navigation-bar {
+  display: flex;
+}
+footer {}
 
 /* text/type elements
 
@@ -97,7 +125,6 @@ button, input, optgroup, select, textarea {
 
 #header {
   grid-area: header;
-  background-color: black;
 }
 
 #content {
