@@ -11,10 +11,10 @@ class KoosteResourceTest {
     @Test
     void testHelloEndpoint() {
         given()
-          .when().get("/hello/greeting")
+          .when().get("/")
           .then()
              .statusCode(200)
-             .body(containsString("hello unnamed wanderer"));
+             .body(containsString("Kooste"));
     }
 
 }

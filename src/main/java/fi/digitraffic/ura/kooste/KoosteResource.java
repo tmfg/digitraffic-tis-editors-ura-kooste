@@ -43,7 +43,7 @@ public class KoosteResource {
     }
 
     @GET
-    public TemplateInstance doGreeting(String name) {
+    public TemplateInstance getPublications() {
         List<Publication> publications = publicationsService.listLatestPublications();
         return Templates.index(publications);
     }

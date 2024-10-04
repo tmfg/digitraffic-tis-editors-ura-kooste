@@ -1,0 +1,36 @@
+name: Verify Commit
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  checks: write  # required by scacap/action-surefire-report
+  contents: read  # required by scacap/action-surefire-report
+
+jobs:
+  verify:
+    name: Verify Pull Request
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./digitraffic-tis-editors-ura-kooste
+    steps:
+      - name: Checkout project files
+        uses: actions/checkout@v4
+        with:
+          path: digitraffic-tis-editors-ura-kooste
+
+      - name: Setup project
+        uses: ./digitraffic-tis-editors-ura-kooste/.github/actions/project_setup
+
+      - name: Run tests
+        run: mvn --quiet test
+
+      - name: Publish test report
+        if: always()
+        uses: scacap/action-surefire-report@v1
