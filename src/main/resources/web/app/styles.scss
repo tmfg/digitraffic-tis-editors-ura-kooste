@@ -83,9 +83,10 @@ button, input, optgroup, select, textarea {
 }
 
 /* main structure of the page */
-#container {  display: grid;
+#container {
+  display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 4em 1fr 4em;
+  grid-template-rows: auto 1fr 4em;
   gap: 0px 0px;
   grid-auto-flow: row;
   grid-template-areas:
@@ -99,7 +100,10 @@ button, input, optgroup, select, textarea {
   background-color: black;
 }
 
-#content { grid-area: content; }
+#content {
+  grid-area: content;
+  padding: 0 2rem 0 2rem;
+}
 
 #footer {
   grid-area: footer;
