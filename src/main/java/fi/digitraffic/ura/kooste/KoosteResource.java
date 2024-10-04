@@ -11,11 +11,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 
-@Path("/kooste")
+@Path("/")
 public class KoosteResource {
 
     @Inject
@@ -32,42 +31,21 @@ public class KoosteResource {
     @Inject
     SecretsManagerClient secretsManagerClient;
 
-    private final HelloService service;
+    private final PublicationsService publicationsService;
 
-    public KoosteResource(HelloService service) {
-        this.service = service;
+    public KoosteResource(PublicationsService publicationsService) {
+        this.publicationsService = publicationsService;
     }
 
     @CheckedTemplate
     public static class Templates {
-
-        public static native TemplateInstance index(String nav, List<Publication> publications);
-
+        public static native TemplateInstance index(List<Publication> publications);
     }
 
     @GET
-    @Path("/greeting")
-    public TemplateInstance greeting() {
-        return doGreeting(null);
-    }
-
-    @GET
-    @Path("/greeting/{name}")
-    public TemplateInstance greeting(String name) {
-        return doGreeting(name);
-    }
-
-    private TemplateInstance doGreeting(String name) {
-        if (name == null || name.isEmpty()) {
-            name = "unnamed wanderer";
-        }
-        List<Publication> publications = List.of(
-            new Publication("eka", ZonedDateTime.now(), "http://example.fi"),
-            new Publication("eka", ZonedDateTime.now().minusHours(3).minusMinutes(329), "http://example.org"),
-            new Publication("eka", ZonedDateTime.now().minusHours(28).minusMinutes(432).minusSeconds(404), "http://example.local")
-        );
-
-        return Templates.index("nav TBD", publications);
+    public TemplateInstance doGreeting(String name) {
+        List<Publication> publications = publicationsService.listLatestPublications();
+        return Templates.index(publications);
     }
 
 }
