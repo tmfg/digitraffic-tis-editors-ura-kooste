@@ -1,0 +1,66 @@
+name: "Build and push to ECR"
+on:
+  workflow_run:
+    workflows: [ "Release new version" ]
+    types:
+      - completed
+  push:
+    branches: ['main']
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  BuildAndPushImageToECR:
+    name: "Build and Push to ECR"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.OIDC_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+          role-duration-seconds: 7200
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version-file: '.java-version'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Extract CURRENT version
+        id: version
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          echo "version=$(mvn --quiet -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: "digitraffic-tis-editors-ura-kooste"
+          IMAGE_TAG: ${{ steps.version.outputs.version }}
+        run: |
+          ./mvnw install -Dquarkus.container-image.build=true -Dquarkus.container-image.group=$ECR_REGISTRY -Dquarkus.container-image.name=$ECR_REPOSITORY -Dquarkus.container-image.tag=latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image_latest=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
+          if [[ -n "$IMAGE_TAG" ]]
+          then
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            echo "image_versioned=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          fi

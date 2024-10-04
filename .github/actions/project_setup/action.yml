@@ -1,0 +1,20 @@
+# common steps and such for setting up the required dependencies for URA Kooste
+
+name: Setup project tools and dependencies
+
+runs:
+  using: composite
+
+  steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version-file: './digitraffic-tis-editors-ura-kooste/.java-version'
+        distribution: 'temurin'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
