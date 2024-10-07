@@ -3,8 +3,24 @@
 
 <h1>Kooste</h1>
 
+<table id="publications">
+  <thead>
+  <tr>
+    <th scope="col">Name</th>
+    <th scope="col">Timestamp</th>
+    <th scope="col">Download link</th>
+  </tr>
+  </thead>
+  <tbody>
+  {#for publication in publications}
+  <tr>
+    <th scope="row">{publication.name}</th>
+    <td>{publication.timestamp}</td>
+    <td>{publication.url}</td>
+  </tr>
+  {/for}
+  </tbody>
+</table>
+
 <ul>
-{#for publication in publications}
-  <li>{publication.name} {publication.timestamp} {publication.url}</li>
-{/for}
 </ul>

@@ -137,3 +137,28 @@ button, input, optgroup, select, textarea {
   background-color: darkslategray;
 }
 
+#publications {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  color: #2C2C44;
+
+  thead {
+    background-color: #2C2C44;
+    color: #CDCDD7;
+  }
+
+  tbody {
+    tr {
+      background-color: #F6F6F6;
+    }
+
+    tr:nth-child(even) {
+      background-color: #DFDFDF;
+    }
+    tr:hover {
+      background-color: #9696AA;
+    }
+
+  }
+}
