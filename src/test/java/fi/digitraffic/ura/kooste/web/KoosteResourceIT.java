@@ -1,4 +1,4 @@
-package fi.digitraffic.ura.kooste;
+package fi.digitraffic.ura.kooste.web;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
