@@ -75,13 +75,7 @@
         <dependency>
             <groupId>io.quarkiverse.web-bundler</groupId>
             <artifactId>quarkus-web-bundler</artifactId>
-            <version>1.7.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mvnpm.at.popperjs</groupId>
-            <artifactId>core</artifactId>
-            <version>2.11.8</version>
-            <scope>provided</scope>
+            <version>1.7.2</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -111,6 +105,20 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-container-image-jib</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-scheduler</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.slf4j</groupId>
+            <artifactId>slf4j-jboss-logmanager</artifactId>
+        </dependency>
+        <!-- Library for preventing users from accidentally causing non-URL compliant strings to get generated -->
+        <dependency>
+            <groupId>com.github.slugify</groupId>
+            <artifactId>slugify</artifactId>
+            <version>3.0.7</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
