@@ -1,4 +1,4 @@
-package fi.digitraffic.tis.ura;
+package fi.digitraffic.ura.kooste;
 
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
