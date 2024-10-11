@@ -99,10 +99,17 @@ p {
   font-family: 'Piazzolla', serif;
 }
 
+/* Additional resets
+ *
+ */
 /* list elements are easier to work through resetting instead of normalization */
 ol,ul {
   margin: 0;
   padding: 0
+}
+/* link styles should be affected by cascaded colors, not some browser defaults */
+a {
+  color: inherit;
 }
 
 /* form elements */
@@ -142,13 +149,32 @@ button, input, optgroup, select, textarea {
   text-align: left;
   border-collapse: collapse;
   color: #2C2C44;
+  table-layout: fixed;
 
   thead {
     background-color: #2C2C44;
     color: #CDCDD7;
+
+    .codespace {
+      width: 8em;
+    }
+
+    .label {
+    }
+
+    .url {
+      width: 25em;
+    }
   }
 
   tbody {
+
+    th,td {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     tr {
       background-color: #F6F6F6;
     }
@@ -157,7 +183,8 @@ button, input, optgroup, select, textarea {
       background-color: #DFDFDF;
     }
     tr:hover {
-      background-color: #9696AA;
+      color: white;
+      background-color: #505064;
     }
 
   }

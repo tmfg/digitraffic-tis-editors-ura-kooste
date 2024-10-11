@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
 import java.util.List;
+import java.util.Locale;
 
 
 @Path("/")
@@ -39,13 +40,16 @@ public class KoosteResource {
 
     @CheckedTemplate
     public static class Templates {
-        public static native TemplateInstance index(List<Publication> publications);
+        public static native TemplateInstance index(Locale locale, List<Publication> publications);
     }
 
     @GET
     public TemplateInstance getPublications() {
         List<Publication> publications = publicationsService.listLatestPublications();
-        return Templates.index(publications);
+        Locale locale = Locale.of("fi");
+        return Templates.index(locale, publications)
+            .setLocale(locale)
+            .setAttribute("bundle", "publications");
     }
 
 }

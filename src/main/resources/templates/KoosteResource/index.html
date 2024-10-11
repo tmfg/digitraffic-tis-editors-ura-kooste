@@ -1,26 +1,26 @@
 {#include main.html}
-{#title}Greeting{/title}
-
-<h1>Kooste</h1>
+{#title}{mf:format(i18n:['page.title'], i18n:['page.name'])}{/title}
+<h1>{i18n:['page.header']}</h1>
 
 <table id="publications">
   <thead>
   <tr>
-    <th scope="col">Name</th>
-    <th scope="col">Timestamp</th>
-    <th scope="col">Download link</th>
+    <th class="codespace" scope="col">{i18n:['table.header.codespace']}</th>
+    <th class="label" scope="col">{i18n:['table.header.label']}</th>
+    <th scope="col">{i18n:['table.header.timestamp']}</th>
+    <th class="url" scope="col">{i18n:['table.header.downloadLink']}</th>
   </tr>
   </thead>
   <tbody>
   {#for publication in publications}
   <tr>
-    <th scope="row">{publication.name}</th>
-    <td>{publication.timestamp}</td>
-    <td>{publication.url}</td>
+    <th scope="row">{publication.codespace}</th>
+    <td>{publication.label}</td>
+    <td>{time:format(publication.timestamp, i18n:['publication.timestamp.format'], locale)}</td>
+    <td class="url"><a href="{publication.url}" target="_blank" rel="nofollow noopener noreferrer">{mf:format(i18n:['publication.download.description'], publication.fileName)}</a></td>
   </tr>
   {/for}
   </tbody>
 </table>
-
 <ul>
 </ul>
