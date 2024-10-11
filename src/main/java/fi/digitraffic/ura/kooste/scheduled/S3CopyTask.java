@@ -1,5 +1,6 @@
-package fi.digitraffic.ura.kooste;
+package fi.digitraffic.ura.kooste.scheduled;
 
+import fi.digitraffic.ura.kooste.PublicationsService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;

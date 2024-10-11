@@ -1,5 +1,6 @@
 package fi.digitraffic.ura.kooste;
 
+import fi.digitraffic.ura.kooste.scheduled.S3CopyTask;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
