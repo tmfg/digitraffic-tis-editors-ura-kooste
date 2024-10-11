@@ -1,6 +1,7 @@
-package fi.digitraffic.ura.kooste;
+package fi.digitraffic.ura.kooste.publications;
 
 import com.github.slugify.Slugify;
+import fi.digitraffic.ura.kooste.publications.model.Publication;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;

@@ -1,7 +1,7 @@
 package fi.digitraffic.ura.kooste.web;
 
-import fi.digitraffic.ura.kooste.Publication;
-import fi.digitraffic.ura.kooste.PublicationsService;
+import fi.digitraffic.ura.kooste.publications.model.Publication;
+import fi.digitraffic.ura.kooste.publications.PublicationsService;
 import io.quarkus.amazon.s3.runtime.S3Crt;
 import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;

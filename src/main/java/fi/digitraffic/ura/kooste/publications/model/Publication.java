@@ -1,4 +1,4 @@
-package fi.digitraffic.ura.kooste;
+package fi.digitraffic.ura.kooste.publications.model;
 
 import java.time.ZonedDateTime;
 

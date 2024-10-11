@@ -1,5 +1,6 @@
 package fi.digitraffic.ura.kooste;
 
+import fi.digitraffic.ura.kooste.publications.model.Publication;
 import fi.digitraffic.ura.kooste.scheduled.S3CopyTask;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
