@@ -1,4 +1,4 @@
-package fi.digitraffic.ura.kooste;
+package fi.digitraffic.ura.kooste.dev;
 
 import io.quarkus.arc.profile.IfBuildProfile;
 import io.quarkus.runtime.Startup;
@@ -19,15 +19,15 @@ import java.util.stream.Stream;
 @ApplicationScoped
 @IfBuildProfile("dev")
 @Startup
-public class DevDataInjector {
+public class DataInjector {
 
     public static final int MAX_DEPTH = 6;
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final S3Client s3Client;
     private final String fromBucket;
 
-    public DevDataInjector(S3Client s3Client,
-                           @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket) {
+    public DataInjector(S3Client s3Client,
+                        @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket) {
         this.s3Client = s3Client;
         this.fromBucket = fromBucket;
         init();
