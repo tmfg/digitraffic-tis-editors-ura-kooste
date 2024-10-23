@@ -54,15 +54,24 @@ public class PublicationsService {
                                @ConfigProperty(name = "kooste.tasks.s3copy.from.prefix") String fromPrefix,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.bucket") String toBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.prefix") String toPrefix,
-                               @ConfigProperty(name = "kooste.tasks.s3copy.cloudFrontUriPattern") String cloudFrontUrl) {
+                               @ConfigProperty(name = "kooste.environment") String koosteEnvironment) {
         this.s3Client = Objects.requireNonNull(s3Client);
         this.s3TransferManager = Objects.requireNonNull(s3TransferManager);
         this.fromBucket = Objects.requireNonNull(fromBucket);
         this.fromPrefix = Objects.requireNonNull(fromPrefix);
         this.toBucket = Objects.requireNonNull(toBucket);
         this.toPrefix = Objects.requireNonNull(toPrefix);
-        this.cloudFrontUrl = Objects.requireNonNull(cloudFrontUrl);
+        this.cloudFrontUrl = resolveCloudFrontUrl(Objects.requireNonNull(koosteEnvironment));
         this.slugger = Slugify.builder().build();
+    }
+
+    private static String resolveCloudFrontUrl(String environment) {
+        return switch (environment) {
+            case "prd" -> "https://rae.fintraffic.fi/exports/%s";
+            case "tst" -> "https://rae-test.fintraffic.fi/exports/%s";
+            case "dev" -> "https://digitraffic-tis-ura-dev.aws.fintraffic.cloud/exports/%s";
+            default -> "http://cloudfront.localhost/exports/%s";
+        };
     }
 
     public List<Publication> listLatestPublications() {
@@ -115,7 +124,7 @@ public class PublicationsService {
                         object.sourceBucket(fromBucket)
                             .sourceKey(p.url())
                             .destinationBucket(toBucket)
-                            .destinationKey(toPrefix + "/" + objectName);
+                            .destinationKey(pathify(toPrefix, objectName));
                     });
                 }).completionFuture().get();
                 exportedPublications.add(new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName));
@@ -129,6 +138,30 @@ public class PublicationsService {
         exportedPublications.sort(Comparator.comparing(Publication::codespace)
             .thenComparing(Publication::label));
         return exportedPublications;
+    }
+
+    /**
+     * Guard against extra slashes in path parts etc. Will not add path separators to start/end of final string.
+     * @param parts Parts which may have extra slashes etc.
+     * @return Normalized path.
+     */
+    protected static String pathify(String... parts) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (String part : parts) {
+            if (first) {
+                first = false;
+            } else {
+                if (!part.startsWith("/")) {
+                    part = "/" + part;
+                }
+            }
+            if (part.endsWith("/")) {
+                part = part.substring(0, part.length() - 1);
+            }
+            sb.append(part);
+        }
+        return sb.toString();
     }
 
     private List<S3Object> listObjectsInBucket(String bucket, String prefix) {
