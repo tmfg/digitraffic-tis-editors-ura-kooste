@@ -14,6 +14,7 @@ import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -191,7 +192,7 @@ public class PublicationsService {
             return Optional.of(new Publication(
                 matcher.group("codespace"),
                 metadata.getOrDefault(UTTU_EXPORT_PREFIX + ".name", UNSPECIFIED_LABEL),
-                LocalDateTime.parse(matcher.group("timestamp"), UTTU_TIMESTAMP).atZone(HELSINKI_TZ),
+                LocalDateTime.parse(matcher.group("timestamp"), UTTU_TIMESTAMP).atZone(ZoneOffset.UTC).withZoneSameInstant(HELSINKI_TZ),
                 key,
                 fileName));
         } else {
