@@ -12,12 +12,15 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,11 +34,18 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PublicationsService {
 
-    private static final String UTTU_EXPORT_PREFIX = "no.entur.uttu.export";
-    private static final Pattern EXPORT_KEY_PATTERN = Pattern.compile("^(rb_)?(?<codespace>.{3}).+(?<timestamp>\\d{14})\\.(?<fileExtension>.{3})$");
-    private static final ZoneId HELSINKI_TZ = ZoneId.of("Europe/Helsinki");
-    private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
     public static final DateTimeFormatter UTTU_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    private static final String UTTU_EXPORT_PREFIX = "no.entur.uttu.export";
+
+    private static final Pattern EXPORT_KEY_PATTERN = Pattern.compile("^(rb_)?(?<codespace>.{3}).+(?<timestamp>\\d{14})\\.(?<fileExtension>.{3})$");
+
+    private static final Pattern MIME_PATTERN = Pattern.compile("^=\\?UTF-8\\?B\\?(.+?)\\?=$");
+
+    private static final ZoneId HELSINKI_TZ = ZoneId.of("Europe/Helsinki");
+
+    private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
+
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -181,7 +191,7 @@ public class PublicationsService {
 
     Optional<Publication> extractPublication(S3Object s3Object) {
         String key = s3Object.key();
-        Map<String, String> metadata = s3Client.headObject(b -> b.bucket(fromBucket).key(s3Object.key())).metadata();
+        Map<String, String> metadata = mimeDecodeValues(s3Client.headObject(b -> b.bucket(fromBucket).key(s3Object.key())).metadata());
 
         String fileName = removePrefix(fromPrefix, key);
 
@@ -199,6 +209,32 @@ public class PublicationsService {
             logger.debug("Key {} did not match expected file pattern", key);
             return Optional.empty();
         }
+    }
+
+    /**
+     * Detects MIME encoded values and converts them to usable format.
+     *
+     * @param metadata Metadata to scan.
+     * @return Decoded metadata.
+     */
+    protected static Map<String, String> mimeDecodeValues(Map<String, String> metadata) {
+        Map<String, String> decodedMetadata = HashMap.newHashMap(metadata.size());
+
+        for (Map.Entry<String, String> entry : metadata.entrySet()) {
+            String value = entry.getValue();
+            Matcher matcher = MIME_PATTERN.matcher(value);
+            if (matcher.find()) {
+                String base64Encoded = matcher.group(1);
+                byte[] utf8Bytes = Base64.getDecoder().decode(base64Encoded);
+                value = new String(utf8Bytes, StandardCharsets.UTF_8);
+            }
+            decodedMetadata.put(
+                entry.getKey(),
+                value
+            );
+        }
+
+        return decodedMetadata;
     }
 
     private String removePrefix(String prefix, String s) {
