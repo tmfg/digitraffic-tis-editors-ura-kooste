@@ -68,6 +68,31 @@ Easily start your REST Web Services
 
 [Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
 
+## Troubleshooting
+
+### `esbuild` missing when running tests/dev mode
+
+If you get a stacktrace like the one below complaining about missing executable:
+
+```
+java.lang.RuntimeException:
+ java.lang.RuntimeException:
+  io.quarkus.builder.BuildException:
+   Build failure: Build failed due to errors
+    [error]: Build step io.quarkiverse.web.bundler.deployment.BundlingProcessor#bundle threw an exception:
+     java.io.UncheckedIOException:
+      java.io.IOException:
+       Cannot run program "/var/folders/nj/fnq0l71j37v94vqm0241gn9r0000gq/T/esbuild-0.23.0-mvnpm-0.0.8/package/bin/esbuild" (in directory "/Users/{USER_HOME}/code/Fintraffic/digitraffic-tis-editors-ura-kooste/target/web-bundler/test"): error=2, No such file or directory
+```
+
+This is caused by temporary file/cache mismatch between the used tooling, e.g. you try to run tests from IntelliJ 
+IDEA while you've been running devmode in terminal.
+
+To resolve this, navigate to the parent directory of the tool and simply force remove all of it:
+```shell
+(cd /var/folders/nj/fnq0l71j37v94vqm0241gn9r0000gq/T/ && rm -r esbuild-0.23.0-mvnpm-0.0.8)
+```
+
 ---
 
 Copyright Fintraffic 2023-2024. Licensed under the EUPL-1.2 or later.

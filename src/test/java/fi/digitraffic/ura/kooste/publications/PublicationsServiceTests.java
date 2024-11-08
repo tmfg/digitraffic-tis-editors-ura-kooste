@@ -6,6 +6,7 @@ import org.junit.jupiter.api.function.Executable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -47,5 +48,27 @@ class PublicationsServiceTests {
         Map<String, String> expectedDecodedMetadata = Map.of("normal", "normal", "decodedButFaulty", decodedValue, "encoded", decodedValue);
 
         assertThat(PublicationsService.mimeDecodeValues(metadata), equalTo(expectedDecodedMetadata));
+    }
+
+    public static void main(String[] args) {
+        String s = "åäö osa ø";
+        Map<String, String> m = Map.of("x", s);
+        Map<String, String> e = mimeEncodeValues(m);
+        System.out.println("mimeEncodeValues(m) = " + e);
+        System.out.println("PublicationsService.mimeDecodeValues(e) = " + PublicationsService.mimeDecodeValues(e));
+        //                                    =?UTF-8?B?w  6  X  D  p  M  O  2  I  M  O  4?=
+        Map<String, String> e2 = Map.of("y", "=?UTF-8?Q?=C3=A5=C3=A4=C3=B6_osa_=C3=B8?=");
+        System.out.println("PublicationsService.mimeDecodeValues(e2) = " + PublicationsService.mimeDecodeValues(e2));
+    }
+
+    private static Map<String, String> mimeEncodeValues(Map<String, String> metadata) {
+        Map<String, String> encodedMetadata = HashMap.newHashMap(metadata.size());
+        for (Map.Entry<String, String> entry : metadata.entrySet()) {
+            byte[] utf8Bytes = entry.getValue().getBytes(StandardCharsets.UTF_8);
+            String base64Encoded = Base64.getEncoder().encodeToString(utf8Bytes);
+            System.out.println("base64Encoded = " + base64Encoded);
+            encodedMetadata.put(entry.getKey(), "=?UTF-8?B?" + base64Encoded + "?=");
+        }
+        return encodedMetadata;
     }
 }
