@@ -3,6 +3,7 @@ package fi.digitraffic.ura.kooste.publications;
 import com.github.slugify.Slugify;
 import fi.digitraffic.ura.kooste.publications.model.Publication;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.mail.internet.MimeUtility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,13 +13,12 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
-import java.nio.charset.StandardCharsets;
+import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -36,19 +36,17 @@ public class PublicationsService {
 
     public static final DateTimeFormatter UTTU_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
+    private static final Logger logger = LoggerFactory.getLogger(PublicationsService.class);
+
     private static final String UTTU_EXPORT_PREFIX = "no.entur.uttu.export";
 
     private static final Pattern EXPORT_KEY_PATTERN = Pattern.compile("^(rb_)?(?<codespace>.{3}).+(?<timestamp>\\d{14})\\.(?<fileExtension>.{3})$");
-
-    private static final Pattern MIME_PATTERN = Pattern.compile("^=\\?UTF-8\\?B\\?(.+?)\\?=$");
 
     private static final ZoneId HELSINKI_TZ = ZoneId.of("Europe/Helsinki");
 
     private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
 
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final S3Client s3Client;
     private final S3TransferManager s3TransferManager;
@@ -222,11 +220,12 @@ public class PublicationsService {
 
         for (Map.Entry<String, String> entry : metadata.entrySet()) {
             String value = entry.getValue();
-            Matcher matcher = MIME_PATTERN.matcher(value);
-            if (matcher.find()) {
-                String base64Encoded = matcher.group(1);
-                byte[] utf8Bytes = Base64.getDecoder().decode(base64Encoded);
-                value = new String(utf8Bytes, StandardCharsets.UTF_8);
+            if (value.startsWith("=?UTF-8?")) {
+                try {
+                    value = MimeUtility.decodeText(value);
+                } catch (UnsupportedEncodingException e) {
+                    logger.warn("Non-decodeable metadata value '{}={}'", entry.getKey(), entry.getValue(), e);
+                }
             }
             decodedMetadata.put(
                 entry.getKey(),
