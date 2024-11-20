@@ -22,6 +22,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if Actor is a Member of one of the teams
+        uses: im-open/is-actor-team-member@v1.2.0
+        with:
+          github-actor: ${{ github.actor }}
+          github-organization: tmfg
+          github-team-slugs: |
+            ["digitraffic-tis-solita"]
+          github-usernames: |
+            ["dependabot[bot]"]
+          github-token: ${{ secrets.ORG_MEMBER_READ }}
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
