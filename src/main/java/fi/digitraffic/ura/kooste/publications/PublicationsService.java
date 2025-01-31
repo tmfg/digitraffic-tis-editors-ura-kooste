@@ -7,16 +7,22 @@ import jakarta.mail.internet.MimeUtility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +36,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 @ApplicationScoped
 public class PublicationsService {
@@ -45,6 +54,8 @@ public class PublicationsService {
     private static final ZoneId HELSINKI_TZ = ZoneId.of("Europe/Helsinki");
 
     private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
+
+    private static final String AGGREGATE_PUBLICATIONS = "AGGREGATE";
 
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
 
@@ -126,17 +137,9 @@ public class PublicationsService {
     private List<Publication> getExportedPublications(List<Publication> allLatest) {
         List<Publication> exportedPublications = new ArrayList<>();
         allLatest.forEach(p -> {
-            String objectName = p.codespace() + "-" + slugger.slugify(p.label()) + ".zip";
+            String objectName = createObjectName(p.codespace(), p.label());
             try {
-                s3TransferManager.copy(copy -> {
-                    copy.copyObjectRequest(object -> {
-                        object.sourceBucket(fromBucket)
-                            .sourceKey(p.url())
-                            .destinationBucket(toBucket)
-                            .destinationKey(pathify(toPrefix, objectName));
-                    });
-                }).completionFuture().get();
-                exportedPublications.add(new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName));
+                exportedPublications.add(export(p, objectName));
             } catch (InterruptedException e) {
                 logger.error("Thread interrupted! Interrupting current thread...", e);
                 Thread.currentThread().interrupt();
@@ -144,9 +147,60 @@ public class PublicationsService {
                 logger.warn("Execution failed while copying {}", p, e);
             }
         });
+
+        exportedPublications.add(combineAllAndExport(exportedPublications));
+
         exportedPublications.sort(Comparator.comparing(Publication::codespace)
             .thenComparing(Publication::label));
         return exportedPublications;
+    }
+
+    private String createObjectName(String codespace, String label) {
+        return codespace + "-" + slugger.slugify(label) + ".zip";
+    }
+
+    private Publication export(Publication p, String objectName) throws InterruptedException, ExecutionException {
+        s3TransferManager.copy(copy -> {
+            copy.copyObjectRequest(object -> {
+                object.sourceBucket(fromBucket)
+                    .sourceKey(p.url())
+                    .destinationBucket(toBucket)
+                    .destinationKey(pathify(toPrefix, objectName));
+            });
+        }).completionFuture().get();
+        return new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName);
+    }
+
+    /**
+     * Combines given list of Publication zip files into one big zip file and uploads that with given static name.
+     * @param publications
+     */
+    private Publication combineAllAndExport(List<Publication> publications) {
+        ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
+        ZipOutputStream outputZip = new ZipOutputStream(outputBytes);
+
+        publications.forEach(publication -> {
+            try (InputStream inputBytes = s3Client.getObject(getObject -> getObject.bucket(toBucket).key(pathify(toPrefix, publication.fileName())));
+                 ZipInputStream inputZip = new ZipInputStream(inputBytes)) {
+                ZipEntry nextEntry;
+                while ((nextEntry = inputZip.getNextEntry()) != null) {
+                    outputZip.putNextEntry(nextEntry);
+                }
+            } catch (IOException e) {
+                logger.warn("Failed to create combined 'all' publication", e);
+            }
+        });
+
+        String allPublication = "all";
+        String objectName = createObjectName(AGGREGATE_PUBLICATIONS, allPublication);
+
+        ByteArrayInputStream finalOutput = new ByteArrayInputStream(outputBytes.toByteArray());
+
+        s3Client.putObject(putObjectRequest -> {
+            putObjectRequest.bucket(toBucket).key(pathify(toPrefix, objectName));
+        }, RequestBody.fromInputStream(finalOutput, outputBytes.size()));
+
+        return new Publication(AGGREGATE_PUBLICATIONS, allPublication, ZonedDateTime.now(), buildCloudFrontUrl(objectName), objectName);
     }
 
     /**

@@ -95,4 +95,4 @@ To resolve this, navigate to the parent directory of the tool and simply force r
 
 ---
 
-Copyright Fintraffic 2023-2024. Licensed under the EUPL-1.2 or later.
+Copyright Fintraffic 2023-2025. Licensed under the EUPL-1.2 or later.
