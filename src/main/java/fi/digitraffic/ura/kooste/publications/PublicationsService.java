@@ -55,7 +55,7 @@ public class PublicationsService {
 
     private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
 
-    private static final String AGGREGATE_PUBLICATIONS = "AGGREGATE";
+    private static final String AGGREGATE_PUBLICATIONS = "KOOSTE";
 
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
 
