@@ -176,28 +176,45 @@ public class PublicationsService {
      * @param publications
      */
     private Publication combineAllAndExport(List<Publication> publications) {
-        ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
-        ZipOutputStream outputZip = new ZipOutputStream(outputBytes);
-
-        publications.forEach(publication -> {
-            try (InputStream inputBytes = s3Client.getObject(getObject -> getObject.bucket(toBucket).key(pathify(toPrefix, publication.fileName())));
-                 ZipInputStream inputZip = new ZipInputStream(inputBytes)) {
-                ZipEntry nextEntry;
-                while ((nextEntry = inputZip.getNextEntry()) != null) {
-                    outputZip.putNextEntry(nextEntry);
-                }
-            } catch (IOException e) {
-                logger.warn("Failed to create combined 'all' publication", e);
-            }
-        });
-
         String allPublication = "all";
         String objectName = createObjectName(AGGREGATE_PUBLICATIONS, allPublication);
 
-        ByteArrayInputStream finalOutput = new ByteArrayInputStream(outputBytes.toByteArray());
+        logger.debug("Generating merged contents for {} from latest publications", objectName);
 
+        ByteArrayOutputStream outputBytes = new ByteArrayOutputStream();
+        try (ZipOutputStream outputZip = new ZipOutputStream(outputBytes)) {
+            publications.forEach(publication -> {
+                String s3Path = pathify(toPrefix, publication.fileName());
+                logger.debug("Merging s3://{}/{} into {}", toBucket, s3Path, objectName);
+                try (InputStream inputBytes = s3Client.getObject(getObject -> getObject.bucket(toBucket).key(s3Path));
+                     ZipInputStream inputZip = new ZipInputStream(inputBytes)) {
+                    ZipEntry entry;
+                    while ((entry = inputZip.getNextEntry()) != null) {
+                        String entryName = entry.getName();
+                        // Avoid duplicate entries
+                        if (!entry.isDirectory()) {
+                            logger.trace("Copying {} from {} to {}", entryName, publication.fileName(), objectName);
+                            outputZip.putNextEntry(new ZipEntry(entryName));
+                            outputZip.write(inputZip.readAllBytes());
+                            outputZip.closeEntry();
+                        } else {
+                            logger.trace("Current entry {} is a directory, skipping", entryName);
+                        }
+                        inputZip.closeEntry();
+                    }
+                } catch (IOException e) {
+                    logger.warn("Failed to create combined 'all' publication", e);
+                }
+            });
+        } catch (IOException e) {
+            logger.error("Failed to merge zips, check logs for info", e);
+        }
+
+        ByteArrayInputStream finalOutput = new ByteArrayInputStream(outputBytes.toByteArray());
         s3Client.putObject(putObjectRequest -> {
-            putObjectRequest.bucket(toBucket).key(pathify(toPrefix, objectName));
+            String s3Path = pathify(toPrefix, objectName);
+            logger.debug("Copying merged publication to s3://{}/{}", toBucket, s3Path);
+            putObjectRequest.bucket(toBucket).key(s3Path);
         }, RequestBody.fromInputStream(finalOutput, outputBytes.size()));
 
         return new Publication(AGGREGATE_PUBLICATIONS, allPublication, ZonedDateTime.now(), buildCloudFrontUrl(objectName), objectName);
