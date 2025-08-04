@@ -5,12 +5,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    reviewers:
-      - "tmfg/digitraffic-tis-solita"
   # keep used GitHub Actions up to date
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-    reviewers:
-      - "tmfg/digitraffic-tis-solita"
