@@ -17,7 +17,7 @@ public class S3CopyTask {
         this.publicationsService = publicationsService;
     }
 
-    @Scheduled(every="{kooste.tasks.s3copy.schedule}")
+    @Scheduled(every = "{kooste.tasks.s3copy.schedule}")
     void scanAndCopy() {
         logger.info("Polling S3");
         publicationsService.publishLatestPublications();
