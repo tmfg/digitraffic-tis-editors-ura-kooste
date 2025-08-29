@@ -6,7 +6,8 @@ public record Publication(String codespace,
                           String label,
                           ZonedDateTime timestamp,
                           String url,
-                          String fileName) {
+                          String fileName,
+                          String format) {
 
     public Publication {
         codespace = codespace.toUpperCase();

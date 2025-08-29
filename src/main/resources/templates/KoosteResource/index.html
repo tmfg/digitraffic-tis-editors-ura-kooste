@@ -8,6 +8,7 @@
     <th class="codespace" scope="col">{i18n:['table.header.codespace']}</th>
     <th class="label" scope="col">{i18n:['table.header.label']}</th>
     <th scope="col">{i18n:['table.header.timestamp']}</th>
+    <th class="format">{i18n:['table.header.format']}</th>
     <th class="url" scope="col">{i18n:['table.header.downloadLink']}</th>
   </tr>
   </thead>
@@ -17,6 +18,7 @@
     <th scope="row">{publication.codespace}</th>
     <td>{publication.label}</td>
     <td>{time:format(publication.timestamp, i18n:['publication.timestamp.format'], locale)}</td>
+    <td>{publication.format}</td>
     <td class="url"><a href="{publication.url}" target="_blank" rel="nofollow noopener noreferrer">{mf:format(i18n:['publication.download.description'], publication.fileName)}</a></td>
   </tr>
   {/for}

@@ -1,7 +1,10 @@
 package fi.digitraffic.ura.kooste.publications;
 
 import com.github.slugify.Slugify;
+import fi.digitraffic.ura.kooste.http.KoosteHttpClient;
 import fi.digitraffic.ura.kooste.publications.model.Publication;
+import fi.digitraffic.ura.kooste.publications.model.Publisher;
+import fi.digitraffic.ura.kooste.publications.model.Publisher.IPublisher;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.mail.internet.MimeUtility;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -11,14 +14,17 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -34,7 +40,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -43,42 +48,39 @@ import java.util.zip.ZipOutputStream;
 @ApplicationScoped
 public class PublicationsService {
 
-    public static final DateTimeFormatter UTTU_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    public static final DateTimeFormatter TIMESTAMP_PATTERN = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+    private static final String TEMP_FILE_PREFIX = "kooste";
 
     private static final Logger logger = LoggerFactory.getLogger(PublicationsService.class);
-
-    private static final String UTTU_EXPORT_PREFIX = "no.entur.uttu.export";
-
-    private static final Pattern EXPORT_KEY_PATTERN = Pattern.compile("^(rb_)?(?<codespace>.{3}).+(?<timestamp>\\d{14})\\.(?<fileExtension>.{3})$");
-
     private static final ZoneId HELSINKI_TZ = ZoneId.of("Europe/Helsinki");
 
     private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
-
-    private static final String AGGREGATE_PUBLICATIONS = "KOOSTE";
 
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
 
     private final S3Client s3Client;
     private final S3TransferManager s3TransferManager;
     private final String fromBucket;
-    private final String fromPrefix;
+    private final String fromUttuPrefix;
     private final String toBucket;
     private final String toPrefix;
     private final String cloudFrontUrl;
     private final Slugify slugger;
+    private final String fromDownloadPrefix;
 
     public PublicationsService(S3Client s3Client,
                                S3TransferManager s3TransferManager,
                                @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket,
-                               @ConfigProperty(name = "kooste.tasks.s3copy.from.prefix") String fromPrefix,
+                               @ConfigProperty(name = "kooste.tasks.s3copy.from.uttu.prefix") String fromUttuPrefix,
+                               @ConfigProperty(name = "kooste.tasks.s3copy.from.download.prefix") String fromDownloadPrefix,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.bucket") String toBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.prefix") String toPrefix,
                                @ConfigProperty(name = "kooste.environment") String koosteEnvironment) {
         this.s3Client = Objects.requireNonNull(s3Client);
         this.s3TransferManager = Objects.requireNonNull(s3TransferManager);
         this.fromBucket = Objects.requireNonNull(fromBucket);
-        this.fromPrefix = Objects.requireNonNull(fromPrefix);
+        this.fromUttuPrefix = Objects.requireNonNull(fromUttuPrefix);
+        this.fromDownloadPrefix = Objects.requireNonNull(fromDownloadPrefix);
         this.toBucket = Objects.requireNonNull(toBucket);
         this.toPrefix = Objects.requireNonNull(toPrefix);
         this.cloudFrontUrl = resolveCloudFrontUrl(Objects.requireNonNull(koosteEnvironment));
@@ -99,14 +101,30 @@ public class PublicationsService {
     }
 
     public void publishLatestPublications() {
-        List<Publication> availablePublications = listAllAvailablePublications();
-        List<Publication> allLatest = resolveLatest(availablePublications);
-        List<Publication> exportedPublications = getExportedPublications(allLatest);
-        this.publications.set(exportedPublications);
+        this.publications.set(Publisher.PUBLISHERS
+            .parallelStream()
+            .flatMap(service -> this.publishLatestPublications(service).stream())
+            .sorted(Comparator.comparing(Publication::codespace).thenComparing(Publication::label))
+            .toList());
     }
-    private List<Publication> listAllAvailablePublications() {
+
+    private List<Publication> publishLatestPublications(IPublisher publisher) {
+        List<Publication> availablePublications = listAllAvailablePublications(publisher);
+        List<Publication> allLatest = resolveLatest(availablePublications);
+        return getExportedPublications(allLatest, publisher);
+    }
+
+    public String resolvePrefix(IPublisher publisher) {
+        if (publisher.getPublisherType().equals(Publisher.PublisherType.S3)) {
+            return this.fromUttuPrefix;
+        }
+        return this.fromDownloadPrefix;
+    }
+
+    private List<Publication> listAllAvailablePublications(IPublisher publisher) {
+        String fromPrefix = this.resolvePrefix(publisher);
         List<Publication> availablePublications = listObjectsInBucket(fromBucket, fromPrefix).stream()
-            .map(this::extractPublication)
+            .map(s3Object -> this.extractPublication(s3Object, publisher, fromPrefix))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .toList();
@@ -134,10 +152,10 @@ public class PublicationsService {
         return allLatest;
     }
 
-    private List<Publication> getExportedPublications(List<Publication> allLatest) {
+    private List<Publication> getExportedPublications(List<Publication> allLatest, IPublisher publisher) {
         List<Publication> exportedPublications = new ArrayList<>();
         allLatest.forEach(p -> {
-            String objectName = createObjectName(p.codespace(), p.label());
+            String objectName = createObjectName(p.codespace(), p.label(), p.format());
             try {
                 exportedPublications.add(export(p, objectName));
             } catch (InterruptedException e) {
@@ -148,15 +166,17 @@ public class PublicationsService {
             }
         });
 
-        exportedPublications.add(combineAllAndExport(exportedPublications));
+        if (publisher.mergeContents()) {
+            exportedPublications.add(combineAllAndExport(exportedPublications, publisher));
+        }
 
         exportedPublications.sort(Comparator.comparing(Publication::codespace)
             .thenComparing(Publication::label));
         return exportedPublications;
     }
 
-    private String createObjectName(String codespace, String label) {
-        return codespace + "-" + slugger.slugify(label) + ".zip";
+    private String createObjectName(String codespace, String label, String format) {
+        return codespace + "-" + slugger.slugify(label) + "-" + format + ".zip";
     }
 
     private Publication export(Publication p, String objectName) throws InterruptedException, ExecutionException {
@@ -168,16 +188,18 @@ public class PublicationsService {
                     .destinationKey(pathify(toPrefix, objectName));
             });
         }).completionFuture().get();
-        return new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName);
+        return new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName, p.format());
     }
 
     /**
      * Combines given list of Publication zip files into one big zip file and uploads that with given static name.
-     * @param publications
+     *
+     * @param publications Publications and a combined publication
      */
-    private Publication combineAllAndExport(List<Publication> publications) {
+    private Publication combineAllAndExport(List<Publication> publications, IPublisher publisher) {
         String allPublication = "all";
-        String objectName = createObjectName(AGGREGATE_PUBLICATIONS, allPublication);
+        String aggregateName = publisher.name();
+        String objectName = createObjectName(aggregateName, allPublication, publisher.format().displayName);
 
         logger.debug("Generating merged contents for {} from latest publications", objectName);
 
@@ -217,11 +239,18 @@ public class PublicationsService {
             putObjectRequest.bucket(toBucket).key(s3Path);
         }, RequestBody.fromInputStream(finalOutput, outputBytes.size()));
 
-        return new Publication(AGGREGATE_PUBLICATIONS, allPublication, ZonedDateTime.now(), buildCloudFrontUrl(objectName), objectName);
+        return new Publication(
+            aggregateName,
+            allPublication,
+            ZonedDateTime.now(),
+            buildCloudFrontUrl(objectName),
+            objectName,
+            publisher.format().displayName);
     }
 
     /**
      * Guard against extra slashes in path parts etc. Will not add path separators to start/end of final string.
+     *
      * @param parts Parts which may have extra slashes etc.
      * @return Normalized path.
      */
@@ -258,22 +287,23 @@ public class PublicationsService {
         return contents;
     }
 
-    Optional<Publication> extractPublication(S3Object s3Object) {
+    Optional<Publication> extractPublication(S3Object s3Object, IPublisher publisher, String fromPrefix) {
         String key = s3Object.key();
         Map<String, String> metadata = mimeDecodeValues(s3Client.headObject(b -> b.bucket(fromBucket).key(s3Object.key())).metadata());
 
         String fileName = removePrefix(fromPrefix, key);
 
-        Matcher matcher = EXPORT_KEY_PATTERN.matcher(fileName);
+        Matcher matcher = publisher.exportPattern().matcher(fileName);
 
         if (matcher.matches()) {
             logger.debug("File {} with metadata {} accepted, converting to publication", fileName, metadata);
             return Optional.of(new Publication(
                 matcher.group("codespace"),
-                metadata.getOrDefault(UTTU_EXPORT_PREFIX + ".name", UNSPECIFIED_LABEL),
-                LocalDateTime.parse(matcher.group("timestamp"), UTTU_TIMESTAMP).atZone(ZoneOffset.UTC).withZoneSameInstant(HELSINKI_TZ),
+                metadata.getOrDefault(publisher.exportPrefix() + ".name", UNSPECIFIED_LABEL),
+                LocalDateTime.parse(matcher.group("timestamp"), TIMESTAMP_PATTERN).atZone(ZoneOffset.UTC).withZoneSameInstant(HELSINKI_TZ),
                 key,
-                fileName));
+                fileName,
+                publisher.format().displayName));
         } else {
             logger.debug("Key {} did not match expected file pattern", key);
             return Optional.empty();
@@ -317,5 +347,45 @@ public class PublicationsService {
 
     private String buildCloudFrontUrl(String objectName) {
         return cloudFrontUrl.formatted(objectName);
+    }
+
+    public void downloadResource(Publisher.DownloadPublisher publisher) {
+        File file = null;
+        try {
+            file =  File.createTempFile(TEMP_FILE_PREFIX, ".zip");
+            KoosteHttpClient.get(publisher.getURI(), file, publisher.fileName());
+            String objectName = this.downloadedObjectName(publisher);
+            Map<String, String> metadata = Map.of(publisher.exportPrefix() + ".name", "all");
+            upload(this.fromBucket, objectName, metadata, file.toPath());
+            logger.info("Uploaded {} to bucket {} path {}", file.toPath(), fromBucket, objectName);
+        } catch (Exception e) {
+            logger.error("Failed to download resource {}", publisher.getURI(), e);
+            throw new RuntimeException(e);
+        } finally {
+            if (file != null && file.exists() && file.delete()) {
+                logger.trace("Deleted temp-file {}", file);
+            }
+        }
+    }
+
+    private void upload(String bucket, String objectName, Map<String, String> metadata, Path sourcePath) {
+        s3Client.putObject(
+            PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(objectName)
+                .metadata(metadata)
+                .build(),
+            sourcePath
+        );
+    }
+
+    private String downloadedObjectName(IPublisher publisher) {
+        return this.fromDownloadPrefix +
+            publisher.name() +
+            "-" +
+            publisher.format().displayName +
+            "-" +
+            PublicationsService.TIMESTAMP_PATTERN.format(ZonedDateTime.now(ZoneOffset.UTC)) +
+            ".zip";
     }
 }
