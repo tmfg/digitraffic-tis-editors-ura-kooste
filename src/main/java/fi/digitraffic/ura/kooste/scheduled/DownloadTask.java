@@ -19,7 +19,7 @@ public class DownloadTask {
         this.publicationsService = publicationsService;
     }
 
-    @Scheduled(cron="${kooste.tasks.download.schedule}")
+    @Scheduled(cron="${kooste.tasks.download.schedule}", timeZone = "Europe/Helsinki")
     @Retry(maxRetries = 3, delay = 10_000L)
     void download() {
         Publisher.PUBLISHERS.forEach(publisher -> {
