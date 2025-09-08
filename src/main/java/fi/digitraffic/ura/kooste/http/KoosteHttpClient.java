@@ -29,6 +29,10 @@ public class KoosteHttpClient {
             HttpRequest request = HttpRequest.newBuilder().uri(uri).build();
             try {
                 HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                if (!KoosteHttpClient.isResponseOk(response.statusCode())) {
+                    logger.error("Response status code is {} for uri {}", response.statusCode(), uri);
+                    throw new RuntimeException(String.format("Response status code is %d for uri %s", response.statusCode(), uri));
+                }
                 try (InputStream inputStream = response.body();
                      FileOutputStream fileOutputStream = new FileOutputStream(destination);
                      ZipOutputStream zipOutputStream = new ZipOutputStream(fileOutputStream)) {
@@ -47,5 +51,9 @@ public class KoosteHttpClient {
                 throw e;
             }
         }
+    }
+
+    private static boolean isResponseOk(int statusCode) {
+        return statusCode >= 200 && statusCode < 300;
     }
 }
