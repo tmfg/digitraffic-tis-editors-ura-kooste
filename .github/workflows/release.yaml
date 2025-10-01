@@ -50,7 +50,7 @@ jobs:
         run: echo "VERSION_STRING=$(mvn --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion}' --non-recursive exec:exec)" >> $GITHUB_ENV
 
       - name: Create tag
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.git.createRef({
