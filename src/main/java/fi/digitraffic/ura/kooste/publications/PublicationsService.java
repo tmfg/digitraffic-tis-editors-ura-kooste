@@ -14,6 +14,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
@@ -24,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -61,38 +63,32 @@ public class PublicationsService {
     private final S3Client s3Client;
     private final S3TransferManager s3TransferManager;
     private final String fromBucket;
-    private final String fromUttuPrefix;
     private final String toBucket;
     private final String toPrefix;
     private final String cloudFrontUrl;
     private final Slugify slugger;
-    private final String fromDownloadPrefix;
 
     public PublicationsService(S3Client s3Client,
                                S3TransferManager s3TransferManager,
                                @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket,
-                               @ConfigProperty(name = "kooste.tasks.s3copy.from.uttu.prefix") String fromUttuPrefix,
-                               @ConfigProperty(name = "kooste.tasks.s3copy.from.download.prefix") String fromDownloadPrefix,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.bucket") String toBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.prefix") String toPrefix,
                                @ConfigProperty(name = "kooste.environment") String koosteEnvironment) {
         this.s3Client = Objects.requireNonNull(s3Client);
         this.s3TransferManager = Objects.requireNonNull(s3TransferManager);
         this.fromBucket = Objects.requireNonNull(fromBucket);
-        this.fromUttuPrefix = Objects.requireNonNull(fromUttuPrefix);
-        this.fromDownloadPrefix = Objects.requireNonNull(fromDownloadPrefix);
         this.toBucket = Objects.requireNonNull(toBucket);
         this.toPrefix = Objects.requireNonNull(toPrefix);
         this.cloudFrontUrl = resolveCloudFrontUrl(Objects.requireNonNull(koosteEnvironment));
         this.slugger = Slugify.builder().build();
     }
 
-    private static String resolveCloudFrontUrl(String environment) {
+    public String resolveCloudFrontUrl(String environment) {
         return switch (environment) {
             case "prd" -> "https://rae.fintraffic.fi/exports/%s";
             case "tst" -> "https://rae-test.fintraffic.fi/exports/%s";
             case "dev" -> "https://digitraffic-tis-ura-dev.aws.fintraffic.cloud/exports/%s";
-            default -> "http://cloudfront.localhost/exports/%s";
+            default -> s3Client.utilities().getUrl(b -> b.bucket(toBucket).key("exports")).toString()+"/%s";
         };
     }
 
@@ -108,23 +104,30 @@ public class PublicationsService {
             .toList());
     }
 
+    public boolean hasPublishedPublicationWithMetadata(String fileName, String name, String value) {
+        Optional<Publication> latest = listLatestPublications().stream().filter(p -> p.fileName().equals(fileName)).findFirst();
+        if (latest.isPresent()) {
+            String objectName = pathify(toPrefix, fileName);
+            try {
+                Map<String, String> metadata = mimeDecodeValues(s3Client.headObject(b -> b.bucket(toBucket).key(objectName)).metadata());
+                return value.equals(metadata.getOrDefault(name, null));
+            } catch (NoSuchKeyException e) {
+                logger.trace("No such key {} exists in bucket {}", objectName, toBucket, e);
+                return false;
+            }
+        }
+        return false;
+    }
+
     private List<Publication> publishLatestPublications(IPublisher publisher) {
         List<Publication> availablePublications = listAllAvailablePublications(publisher);
         List<Publication> allLatest = resolveLatest(availablePublications);
         return getExportedPublications(allLatest, publisher);
     }
 
-    public String resolvePrefix(IPublisher publisher) {
-        if (publisher.getPublisherType().equals(Publisher.PublisherType.S3)) {
-            return this.fromUttuPrefix;
-        }
-        return this.fromDownloadPrefix;
-    }
-
     private List<Publication> listAllAvailablePublications(IPublisher publisher) {
-        String fromPrefix = this.resolvePrefix(publisher);
-        List<Publication> availablePublications = listObjectsInBucket(fromBucket, fromPrefix).stream()
-            .map(s3Object -> this.extractPublication(s3Object, publisher, fromPrefix))
+        List<Publication> availablePublications = listObjectsInBucket(fromBucket, publisher.inputPrefix()).stream()
+            .map(s3Object -> this.extractPublication(s3Object, publisher, publisher.inputPrefix()))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .toList();
@@ -287,7 +290,7 @@ public class PublicationsService {
         return contents;
     }
 
-    Optional<Publication> extractPublication(S3Object s3Object, IPublisher publisher, String fromPrefix) {
+    private Optional<Publication> extractPublication(S3Object s3Object, IPublisher publisher, String fromPrefix) {
         String key = s3Object.key();
         Map<String, String> metadata = mimeDecodeValues(s3Client.headObject(b -> b.bucket(fromBucket).key(s3Object.key())).metadata());
 
@@ -350,16 +353,29 @@ public class PublicationsService {
     }
 
     public void downloadResource(Publisher.DownloadPublisher publisher) {
+        downloadResource(publisher, publisher.getURI(), true, Map.of());
+    }
+
+    public void downloadResource(Publisher.DownloadPublisher publisher, URI uri, boolean archive, Map<String, String> headers) {
+        downloadResource(publisher, uri, archive, headers, new HashMap<>());
+    }
+
+    public void downloadResource(Publisher.DownloadPublisher publisher, URI uri, boolean archive, Map<String, String> headers, HashMap<String, String> metadata) {
         File file = null;
         try {
             file =  File.createTempFile(TEMP_FILE_PREFIX, ".zip");
-            KoosteHttpClient.get(publisher.getURI(), file, publisher.fileName());
+            if (archive) {
+                KoosteHttpClient.get(uri, file, publisher.fileName());
+            } else {
+                KoosteHttpClient.get(uri, file, headers);
+            }
+
             String objectName = this.downloadedObjectName(publisher);
-            Map<String, String> metadata = Map.of(publisher.exportPrefix() + ".name", "all");
+            metadata.put(publisher.exportPrefix() + ".name", "all");
             upload(this.fromBucket, objectName, metadata, file.toPath());
             logger.info("Uploaded {} to bucket {} path {}", file.toPath(), fromBucket, objectName);
         } catch (Exception e) {
-            logger.error("Failed to download resource {}", publisher.getURI(), e);
+            logger.error("Failed to download resource {}", uri, e);
             throw new RuntimeException(e);
         } finally {
             if (file != null && file.exists() && file.delete()) {
@@ -380,7 +396,7 @@ public class PublicationsService {
     }
 
     private String downloadedObjectName(IPublisher publisher) {
-        return this.fromDownloadPrefix +
+        return publisher.inputPrefix() +
             publisher.name() +
             "-" +
             publisher.format().displayName +
