@@ -53,6 +53,13 @@ public class KoosteHttpClient {
         }
     }
 
+    private static URI uriToHttps(URI uri) {
+        if (!uri.getScheme().equals("https") && !uri.getHost().equals("localhost")) {
+            return URI.create("https://" + uri.getHost() + uri.getPath());
+        }
+        return uri;
+    }
+
     /**
      *  GET ZIP-resource in URI and stream contents to disk.
      *
@@ -60,7 +67,8 @@ public class KoosteHttpClient {
      */
     public static void get(URI uri, File destination, Map<String, String> headers) throws IOException, InterruptedException {
         try (HttpClient client = HttpClient.newHttpClient()) {
-            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(uri);
+            URI httpsUri = uriToHttps(uri);
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder().uri(httpsUri);
             headers.forEach(requestBuilder::header);
             HttpRequest request = requestBuilder.build();
             try {
@@ -73,9 +81,10 @@ public class KoosteHttpClient {
                         fileOutputStream.write(buffer, 0, bytesRead);
                     }
                 }
-                logger.info("File {} downloaded successfully to: {}", uri, destination);
+                int fileSizeInKb = (int) (destination.length() / 1024);
+                logger.info("File {} downloaded successfully to: {} status: {} size: {} kB", httpsUri, destination, response.statusCode(), fileSizeInKb);
             } catch (Exception e) {
-                logger.error("Failed to download file {} to {}", uri, destination, e);
+                logger.error("Failed to download file {} to {}", httpsUri, destination, e);
                 throw e;
             }
         }
