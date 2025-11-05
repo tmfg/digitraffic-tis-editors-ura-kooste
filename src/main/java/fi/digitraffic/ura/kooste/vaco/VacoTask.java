@@ -93,7 +93,7 @@ public class VacoTask {
     @Retry(maxRetries = 3, delay = 10_000L)
     public void queueTask() throws IOException, InterruptedException {
         EntryRequest entry = new EntryRequest(
-            "NeTEx",
+            "netex",
             NETEX_PACKAGE_NAME,
             String.format(this.publicationsService.resolveCloudFrontUrl(this.koosteEnvironment), NETEX_PACKAGE_NAME),
             String.format("%d", System.currentTimeMillis()),
