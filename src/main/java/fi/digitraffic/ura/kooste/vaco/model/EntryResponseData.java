@@ -11,6 +11,7 @@ public record EntryResponseData(
     String status,
     String name,
     String format,
+    String url,
     LocalDateTime created,
     LocalDateTime started,
     LocalDateTime updated

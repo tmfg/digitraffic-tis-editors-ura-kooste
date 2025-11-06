@@ -95,7 +95,7 @@ public class VacoTask {
         EntryRequest entry = new EntryRequest(
             "netex",
             NETEX_PACKAGE_NAME,
-            String.format(this.publicationsService.resolveCloudFrontUrl(this.koosteEnvironment), NETEX_PACKAGE_NAME),
+            this.getNeTExPackageUrl(),
             String.format("%d", System.currentTimeMillis()),
             this.businessId,
             List.of(new ValidationOption(VALIDATION_RULE, new ValidationConfig(CODESPACE, 500))),
@@ -105,6 +105,10 @@ public class VacoTask {
         postEntryToQueue(entry);
     }
 
+    private String getNeTExPackageUrl() {
+        return String.format(this.publicationsService.resolveCloudFrontUrl(this.koosteEnvironment), NETEX_PACKAGE_NAME);
+    }
+
     private void postEntryToQueue(EntryRequest entry) throws IOException, InterruptedException {
         URI uri = this.vacoUri.resolve("/api/queue");
         logger.info("Posting entry to {} with etag {} and businessId {}", uri, entry.etag(), entry.businessId());
@@ -112,7 +116,6 @@ public class VacoTask {
 
         EntryResponse entryResponse = deSerializeObject(res, EntryResponse.class);
         logger.info("Got queue response: {}", entryResponse);
-        logger.info(entryResponse.data().publicId());
     }
 
     /**
@@ -124,6 +127,7 @@ public class VacoTask {
      */
     @Scheduled(every = "15m")
     public void downloadGTFS() throws IOException, InterruptedException {
+        logger.info("Downloading GTFS");
         Optional<EntryResponse> latest = getLatestEntry();
         if (latest.isPresent()) {
             EntryResponse entry = latest.get();
@@ -168,7 +172,7 @@ public class VacoTask {
     private Optional<EntryResponse> getLatestEntry() throws IOException, InterruptedException {
         Comparator<EntryResponse> comparator = Comparator.comparing(e -> e.data().created());
         return Arrays.stream(listEntries())
-            .filter(VacoTask::isReadyEntry)
+            .filter(this::isReadyEntry)
             .filter(VacoTask::hasGTFSResultPackage)
             .max(comparator);
     }
@@ -180,14 +184,16 @@ public class VacoTask {
      * @throws InterruptedException
      */
     private EntryResponse[] listEntries() throws IOException, InterruptedException {
-        URI uri = this.vacoUri.resolve("/api/queue?businessId=" + this.businessId);
+        String path = String.format("/api/queue?businessId=%s&count=1000&name=%s", this.businessId, NETEX_PACKAGE_NAME);
+        URI uri = this.vacoUri.resolve(path);
         byte[] res = KoosteHttpClient.get(uri, getHeaders());
         return deSerializeObject(res, EntryResponse[].class);
     }
 
-    private static boolean isReadyEntry(EntryResponse entry) {
+    private boolean isReadyEntry(EntryResponse entry) {
         return entry.data().name().equalsIgnoreCase(NETEX_PACKAGE_NAME)
             && entry.data().status().equalsIgnoreCase("success")
+            && entry.data().url().equalsIgnoreCase(this.getNeTExPackageUrl())
             && entry.data().format().equalsIgnoreCase("netex");
     }
 
