@@ -128,11 +128,15 @@ public class KoosteHttpClient {
         HttpRequest request = requestBuilder.build();
         try {
             HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            logger.info("Response status code is {} for uri {}", response.statusCode(), uri);
+            if (!KoosteHttpClient.isResponseOk(response.statusCode())) {
+                throw new RuntimeException(String.format("Response status code is %d for uri %s", response.statusCode(), uri));
+            }
             try (InputStream inputStream = response.body()) {
                 return inputStream.readAllBytes();
             }
         } catch (Exception e) {
-            logger.error("Failed to POST {}", uri, e);
+            logger.error("Failed to {} {}", request.method(), uri, e);
             throw e;
         }
     }
