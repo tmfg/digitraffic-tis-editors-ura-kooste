@@ -67,13 +67,16 @@ public class PublicationsService {
     private final String toPrefix;
     private final String cloudFrontUrl;
     private final Slugify slugger;
+    private final int cacheMaxAge;
 
     public PublicationsService(S3Client s3Client,
                                S3TransferManager s3TransferManager,
                                @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.bucket") String toBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.prefix") String toPrefix,
-                               @ConfigProperty(name = "kooste.environment") String koosteEnvironment) {
+                               @ConfigProperty(name = "kooste.environment") String koosteEnvironment,
+                               @ConfigProperty(name = "kooste.cloudfront.cache.max-age", defaultValue = "600") String cacheMaxAge
+    ) {
         this.s3Client = Objects.requireNonNull(s3Client);
         this.s3TransferManager = Objects.requireNonNull(s3TransferManager);
         this.fromBucket = Objects.requireNonNull(fromBucket);
@@ -81,6 +84,7 @@ public class PublicationsService {
         this.toPrefix = Objects.requireNonNull(toPrefix);
         this.cloudFrontUrl = resolveCloudFrontUrl(Objects.requireNonNull(koosteEnvironment));
         this.slugger = Slugify.builder().build();
+        this.cacheMaxAge = Integer.parseInt(Objects.requireNonNull(cacheMaxAge));
     }
 
     public String resolveCloudFrontUrl(String environment) {
@@ -188,6 +192,7 @@ public class PublicationsService {
                 object.sourceBucket(fromBucket)
                     .sourceKey(p.url())
                     .destinationBucket(toBucket)
+                    .cacheControl("max-age=" + cacheMaxAge)
                     .destinationKey(pathify(toPrefix, objectName));
             });
         }).completionFuture().get();
@@ -239,7 +244,7 @@ public class PublicationsService {
         s3Client.putObject(putObjectRequest -> {
             String s3Path = pathify(toPrefix, objectName);
             logger.debug("Copying merged publication to s3://{}/{}", toBucket, s3Path);
-            putObjectRequest.bucket(toBucket).key(s3Path);
+            putObjectRequest.bucket(toBucket).cacheControl("max-age=" + cacheMaxAge).key(s3Path);
         }, RequestBody.fromInputStream(finalOutput, outputBytes.size()));
 
         return new Publication(
