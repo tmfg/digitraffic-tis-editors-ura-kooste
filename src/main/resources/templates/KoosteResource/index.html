@@ -1,15 +1,15 @@
 {#include main.html}
-{#title}{mf:format(i18n:['page.title'], i18n:['page.name'])}{/title}
-<h1>{i18n:['page.header']}</h1>
+{#title}{msg:page_title}{/title}
+<h1>{msg:page_header}</h1>
 
 <table id="publications">
   <thead>
   <tr>
-    <th class="codespace" scope="col">{i18n:['table.header.codespace']}</th>
-    <th class="label" scope="col">{i18n:['table.header.label']}</th>
-    <th scope="col">{i18n:['table.header.timestamp']}</th>
-    <th class="format">{i18n:['table.header.format']}</th>
-    <th class="url" scope="col">{i18n:['table.header.downloadLink']}</th>
+    <th class="codespace" scope="col">{msg:table_header_codespace}</th>
+    <th class="label" scope="col">{msg:table_header_label}</th>
+    <th scope="col">{msg:table_header_timestamp}</th>
+    <th class="format">{msg:table_header_format}</th>
+    <th class="url" scope="col">{msg:table_header_downloadLink}</th>
   </tr>
   </thead>
   <tbody>
@@ -17,12 +17,10 @@
   <tr>
     <th scope="row">{publication.codespace}</th>
     <td>{publication.label}</td>
-    <td>{time:format(publication.timestamp, i18n:['publication.timestamp.format'], locale)}</td>
+    <td>{time:format(publication.timestamp, msg:publication_timestamp_format, locale)}</td>
     <td>{publication.format}</td>
-    <td class="url"><a href="{publication.url}" target="_blank" rel="nofollow noopener noreferrer">{mf:format(i18n:['publication.download.description'], publication.fileName)}</a></td>
+    <td class="url"><a href="{publication.url}" target="_blank" rel="nofollow noopener noreferrer">{publication.fileName}</a></td>
   </tr>
   {/for}
   </tbody>
 </table>
-<ul>
-</ul>
