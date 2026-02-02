@@ -47,6 +47,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import static fi.digitraffic.ura.kooste.publications.model.Publisher.NETEX_ARCHIVE_FILENAME;
+
 @ApplicationScoped
 public class PublicationsService {
 
@@ -313,7 +315,7 @@ public class PublicationsService {
                 fileName,
                 publisher.format().displayName));
         } else {
-            logger.debug("Key {} did not match expected file pattern", key);
+            logger.debug("Key {} did not match expected file pattern {}", key, publisher.exportPattern().pattern());
             return Optional.empty();
         }
     }
@@ -370,13 +372,13 @@ public class PublicationsService {
         try {
             file =  File.createTempFile(TEMP_FILE_PREFIX, ".zip");
             if (archive) {
-                KoosteHttpClient.get(uri, file, publisher.fileName());
+                KoosteHttpClient.get(uri, file, NETEX_ARCHIVE_FILENAME);
             } else {
                 KoosteHttpClient.get(uri, file, headers);
             }
 
             String objectName = this.downloadedObjectName(publisher);
-            metadata.put(publisher.exportPrefix() + ".name", "all");
+            metadata.put(publisher.exportPrefix() + ".name", publisher.exportType());
             upload(this.fromBucket, objectName, metadata, file.toPath());
             logger.info("Uploaded {} to bucket {} path {}", file.toPath(), fromBucket, objectName);
         } catch (Exception e) {
@@ -400,13 +402,9 @@ public class PublicationsService {
         );
     }
 
-    private String downloadedObjectName(IPublisher publisher) {
-        return publisher.inputPrefix() +
-            publisher.name() +
-            "-" +
-            publisher.format().displayName +
-            "-" +
-            PublicationsService.TIMESTAMP_PATTERN.format(ZonedDateTime.now(ZoneOffset.UTC)) +
-            ".zip";
+    private String downloadedObjectName(Publisher.DownloadPublisher publisher) {
+        return publisher.inputPrefix() + publisher.exportTemplate().replace("{timestamp}",
+            PublicationsService.TIMESTAMP_PATTERN.format(ZonedDateTime.now(ZoneOffset.UTC))
+        );
     }
 }

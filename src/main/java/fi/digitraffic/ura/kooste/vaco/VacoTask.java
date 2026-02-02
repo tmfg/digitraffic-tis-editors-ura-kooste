@@ -32,9 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import static fi.digitraffic.ura.kooste.publications.model.Publisher.PETI_GTFS_EXPORT_PATTERN;
-import static fi.digitraffic.ura.kooste.publications.model.Publisher.S3_VACO_INPUT_PREFIX;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class VacoTask {
@@ -51,16 +49,18 @@ public class VacoTask {
     private static final String CONVERSION_RULE = "netex2gtfs.entur";
     private static final String VALIDATION_RULE = "netex.entur";
     private static final String CODESPACE = "FSR";
+
+    private static final Pattern PETI_GTFS_ALL_EXPORT_PATTERN = Pattern.compile("^(?<codespace>(PETI))-GTFS-all-(?<timestamp>\\d{14})\\.zip$");
+    private static final String S3_VACO_INPUT_PREFIX = "inbound/vaco/";
     private static final Publisher.DownloadPublisher GTFS_PUBLISHER =
         new Publisher.DownloadPublisher(
             "PETI",
-            PETI_GTFS_EXPORT_PATTERN,
+            PETI_GTFS_ALL_EXPORT_PATTERN,
             S3_VACO_INPUT_PREFIX,
-            "fi.digitraffic.ura.kooste.peti.export",
             Publisher.PublisherFormat.GTFS,
-            false,
-            null,
-            null);
+            "kooste.tasks.vaco.download.url.gtfs",
+            "all",
+            "inbound/vaco/PETI-GTFS-all-{timestamp}.zip");
 
     private final PublicationsService publicationsService;
     private final String koosteEnvironment;
