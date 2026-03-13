@@ -397,6 +397,7 @@ public class PublicationsService {
                 .bucket(bucket)
                 .key(objectName)
                 .metadata(metadata)
+                .cacheControl("max-age=" + cacheMaxAge)
                 .build(),
             sourcePath
         );
