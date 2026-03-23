@@ -28,5 +28,8 @@ volume/
 # .env is meant for local development parameters only
 .env
 
+# Generated SBOM (build artifact staged for Jib)
+src/main/jib/sbom/
+
 # Quarkus Web bundler uses node_modules for dependencies
 node_modules/

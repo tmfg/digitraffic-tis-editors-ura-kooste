@@ -242,7 +242,7 @@
                     <schemaVersion>1.6</schemaVersion>
                     <outputFormat>json</outputFormat>
                     <outputName>${git.commit.id.full}</outputName>
-                    <outputDirectory>${project.build.directory}/sbom</outputDirectory>
+                    <outputDirectory>${project.basedir}/src/main/jib/sbom</outputDirectory>
                     <includeBomSerialNumber>true</includeBomSerialNumber>
                 </configuration>
             </plugin>
