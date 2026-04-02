@@ -23,7 +23,8 @@ public class DownloadTask {
         this.publicationsService = publicationsService;
     }
 
-    @Scheduled(cron="${kooste.tasks.download.schedule}", timeZone = "Europe/Helsinki")
+    @Scheduled(cron="${kooste.tasks.download.schedule1}", timeZone = "Europe/Helsinki")
+    @Scheduled(cron="${kooste.tasks.download.schedule2}", timeZone = "Europe/Helsinki")
     @Retry(maxRetries = 3, delay = 10_000L)
     void download() {
         if (!enabled) {

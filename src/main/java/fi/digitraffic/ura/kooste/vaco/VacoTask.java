@@ -89,7 +89,8 @@ public class VacoTask {
      * @throws IOException
      * @throws InterruptedException
      */
-    @Scheduled(cron="${kooste.tasks.vaco.schedule}", timeZone = "Europe/Helsinki")
+    @Scheduled(cron="${kooste.tasks.vaco.schedule1}", timeZone = "Europe/Helsinki")
+    @Scheduled(cron="${kooste.tasks.vaco.schedule2}", timeZone = "Europe/Helsinki")
     @Retry(maxRetries = 3, delay = 10_000L)
     public void queueTask() throws IOException, InterruptedException {
         EntryRequest entry = new EntryRequest(
