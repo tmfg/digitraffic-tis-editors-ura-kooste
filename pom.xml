@@ -47,7 +47,7 @@
         <surefire-plugin.version>3.5.5</surefire-plugin.version>
         <build-helper-maven-plugin.version>3.6.1</build-helper-maven-plugin.version>
         <cyclonedx-maven-plugin.version>2.9.1</cyclonedx-maven-plugin.version>
-        <git-commit-id-maven-plugin.version>9.0.2</git-commit-id-maven-plugin.version>
+        <git-commit-id-maven-plugin.version>9.1.0</git-commit-id-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
