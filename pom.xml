@@ -132,7 +132,7 @@
         <dependency>
             <groupId>com.github.slugify</groupId>
             <artifactId>slugify</artifactId>
-            <version>3.0.7</version>
+            <version>4.0.0</version>
         </dependency>
         <!-- for S3 metadata header decoding support which is based on RFC2047 -->
         <dependency>
