@@ -60,7 +60,8 @@ public class VacoTask {
             Publisher.PublisherFormat.GTFS,
             "kooste.tasks.vaco.download.url.gtfs",
             "all",
-            "PETI-GTFS-all-{timestamp}.zip");
+            "PETI-GTFS-all-{timestamp}.zip",
+            false);
 
     private final PublicationsService publicationsService;
     private final String koosteEnvironment;

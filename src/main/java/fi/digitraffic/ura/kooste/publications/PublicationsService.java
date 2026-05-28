@@ -359,20 +359,20 @@ public class PublicationsService {
         return cloudFrontUrl.formatted(objectName);
     }
 
-    public void downloadResource(Publisher.DownloadPublisher publisher) {
-        downloadResource(publisher, publisher.getURI(), true, Map.of());
-    }
-
-    public void downloadResource(Publisher.DownloadPublisher publisher, URI uri, boolean archive, Map<String, String> headers) {
-        downloadResource(publisher, uri, archive, headers, new HashMap<>());
+    public void downloadResource(Publisher.DownloadPublisher publisher, Map<String, byte[]> extraZipEntries) {
+        downloadResource(publisher, publisher.getURI(), true, Map.of(), new HashMap<>(), extraZipEntries);
     }
 
     public void downloadResource(Publisher.DownloadPublisher publisher, URI uri, boolean archive, Map<String, String> headers, HashMap<String, String> metadata) {
+        downloadResource(publisher, uri, archive, headers, metadata, null);
+    }
+
+    public void downloadResource(Publisher.DownloadPublisher publisher, URI uri, boolean archive, Map<String, String> headers, HashMap<String, String> metadata, Map<String, byte[]> extraZipEntries) {
         File file = null;
         try {
             file =  File.createTempFile(TEMP_FILE_PREFIX, ".zip");
             if (archive) {
-                KoosteHttpClient.get(uri, file, NETEX_ARCHIVE_FILENAME);
+                KoosteHttpClient.get(uri, file, NETEX_ARCHIVE_FILENAME, extraZipEntries);
             } else {
                 KoosteHttpClient.get(uri, file, headers);
             }
