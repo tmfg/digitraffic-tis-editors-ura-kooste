@@ -46,7 +46,7 @@ jobs:
         id: version
         if: ${{ github.event_name == 'workflow_run' }}
         run: |
-          echo "version=$(mvn --quiet -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
+          echo "version=$(./mvnw --quiet -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)" >> $GITHUB_OUTPUT
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
