@@ -27,7 +27,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
-        run: mvn -B --show-version validate
+        run: ./mvnw -B --show-version validate
 
       - name: Use provided version increment adjustment
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -39,15 +39,15 @@ jobs:
 
       - name: Extract next MAJOR version
         if: "${{ env.VERSION_ADJUSTMENT == 'major' }}"
-        run: echo "VERSION_STRING=$(mvn --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.nextMajorVersion}.0.0' --non-recursive exec:exec)" >> $GITHUB_ENV
+        run: echo "VERSION_STRING=$(./mvnw --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.nextMajorVersion}.0.0' --non-recursive exec:exec)" >> $GITHUB_ENV
 
       - name: Extract next MINOR version
         if: "${{ env.VERSION_ADJUSTMENT == 'minor' }}"
-        run: echo "VERSION_STRING=$(mvn --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.majorVersion}.${parsedVersion.nextMinorVersion}.0' --non-recursive exec:exec)" >> $GITHUB_ENV
+        run: echo "VERSION_STRING=$(./mvnw --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.majorVersion}.${parsedVersion.nextMinorVersion}.0' --non-recursive exec:exec)" >> $GITHUB_ENV
 
       - name: Extract next PATCH version
         if: "${{ env.VERSION_ADJUSTMENT == 'patch' }}"
-        run: echo "VERSION_STRING=$(mvn --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion}' --non-recursive exec:exec)" >> $GITHUB_ENV
+        run: echo "VERSION_STRING=$(./mvnw --quiet build-helper:parse-version -Dexec.executable=echo -Dexec.args='${parsedVersion.majorVersion}.${parsedVersion.minorVersion}.${parsedVersion.nextIncrementalVersion}' --non-recursive exec:exec)" >> $GITHUB_ENV
 
       - name: Create tag
         uses: actions/github-script@v9

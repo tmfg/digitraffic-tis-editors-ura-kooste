@@ -29,7 +29,7 @@ jobs:
         uses: ./digitraffic-tis-editors-ura-kooste/.github/actions/project_setup
 
       - name: Run tests
-        run: mvn --quiet test
+        run: ./mvnw --quiet test
 
       - name: Publish test report
         if: always()
