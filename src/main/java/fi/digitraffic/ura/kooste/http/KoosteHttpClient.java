@@ -19,12 +19,17 @@ public class KoosteHttpClient {
     private static final Logger logger = LoggerFactory.getLogger(KoosteHttpClient.class);
 
     /**
-     *  GET resource in URI and stream contents into ZIP-archive.
+     * GET resource from URI and stream contents into a ZIP archive.
+     *
+     * <p><strong>Important:</strong> The primary entry (fileName) is always the first zip entry.
+     * The URA backend (NetexFileStopPlaceLoader) reads only the first entry from the zip.</p>
      *
      * @param uri URI to download
-     * @param fileName Filename inside ZIP-archive
+     * @param destination File to write the ZIP to
+     * @param fileName Primary filename inside the ZIP archive
+     * @param extraEntries Additional entries to include in the ZIP after the primary entry (may be null or empty)
      */
-    public static void get(URI uri, File destination, String fileName) throws IOException, InterruptedException {
+    public static void get(URI uri, File destination, String fileName, Map<String, byte[]> extraEntries) throws IOException, InterruptedException {
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = HttpRequest.newBuilder().uri(uri).build();
             try {
@@ -44,6 +49,15 @@ public class KoosteHttpClient {
                         zipOutputStream.write(buffer, 0, bytesRead);
                     }
                     zipOutputStream.closeEntry();
+
+                    if (extraEntries != null) {
+                        for (Map.Entry<String, byte[]> extra : extraEntries.entrySet()) {
+                            ZipEntry extraEntry = new ZipEntry(extra.getKey());
+                            zipOutputStream.putNextEntry(extraEntry);
+                            zipOutputStream.write(extra.getValue());
+                            zipOutputStream.closeEntry();
+                        }
+                    }
                 }
                 logger.info("File {} downloaded and archived successfully to: {}", uri, destination);
             } catch (Exception e) {

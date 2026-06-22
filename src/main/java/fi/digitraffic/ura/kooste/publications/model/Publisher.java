@@ -21,8 +21,8 @@ public class Publisher {
 
     public final static List<IPublisher> PUBLISHERS = List.of(
         new S3Publisher("URA", KOOSTE_EXPORT_PATTERN, S3_UTTU_INPUT_PREFIX, PublisherFormat.NETEX, true),
-        new DownloadPublisher("PETI", PETI_NETEX_ALL_PATTERN, S3_PETI_INPUT_PREFIX, PublisherFormat.NETEX, "kooste.tasks.download.url.peti.all", "all", "PETI-NeTEx-all-{timestamp}.zip"),
-        new DownloadPublisher("PETI", PETI_NETEX_RAIL_PATTERN, S3_PETI_INPUT_PREFIX, PublisherFormat.NETEX, "kooste.tasks.download.url.peti.rail", "rail", "PETI-NeTEx-rail-{timestamp}.zip"),
+        new DownloadPublisher("PETI", PETI_NETEX_ALL_PATTERN, S3_PETI_INPUT_PREFIX, PublisherFormat.NETEX, "kooste.tasks.download.url.peti.all", "all", "PETI-NeTEx-all-{timestamp}.zip", true),
+        new DownloadPublisher("PETI", PETI_NETEX_RAIL_PATTERN, S3_PETI_INPUT_PREFIX, PublisherFormat.NETEX, "kooste.tasks.download.url.peti.rail", "rail", "PETI-NeTEx-rail-{timestamp}.zip", true),
         new S3Publisher("PETI", PETI_GTFS_ALL_EXPORT_PATTERN, S3_VACO_INPUT_PREFIX, PublisherFormat.GTFS, false)
     );
 
@@ -54,7 +54,8 @@ public class Publisher {
     }
 
     public record DownloadPublisher(String name, Pattern exportPattern, String inputPrefix,
-                                    PublisherFormat format, String urlProperty, String exportType, String exportTemplate) implements IPublisher {
+                                    PublisherFormat format, String urlProperty, String exportType, String exportTemplate,
+                                    boolean includeAuthorities) implements IPublisher {
 
         @Override
         public boolean mergeContents() {
