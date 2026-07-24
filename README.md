@@ -51,7 +51,7 @@ The application, packaged as an _über-jar_, is now runnable using `java -jar ta
 
 ## Building the production container image
 
-The production container image is built with [Jib](https://quarkiverse.github.io/quarkiverse-docs/quarkus-container-image/dev/index.html#container-image-jib) (`quarkus-container-image-jib` extension), **not** a Dockerfile — Jib builds the image directly from the Maven build without needing a Docker daemon. The base JVM image is set via `quarkus.jib.base-jvm-image` in `application.properties`.
+The production container image is built with [Jib](https://quarkus.io/guides/container-image#jib) (`quarkus-container-image-jib` extension), **not** a Dockerfile — Jib builds the image directly from the Maven build without needing a Docker daemon. The base JVM image is set via `quarkus.jib.base-jvm-image` in `application.properties`.
 
 To build and load the image locally:
 
