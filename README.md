@@ -8,11 +8,23 @@ If you want to learn more about Quarkus, please visit its website: <https://quar
 
 ## Running the application in dev mode
 
+Dev mode requires two environment variables to be set, otherwise startup fails with
+`Failed to load config value of type class java.lang.String for: ...`:
+
+```shell script
+export KOOSTE_BUSINESS_ID=<business-id>
+export KOOSTE_VACO_URL=<vaco-url>
+```
+
 You can run your application in dev mode that enables live coding using:
 
 ```shell script
 ./mvnw compile quarkus:dev
 ```
+
+Dev mode starts Dev Services (Testcontainers) for Keycloak and LocalStack automatically,
+which requires a running Docker daemon and can take 30-40 seconds. The app listens on
+port `47100` under the `/kooste` root path, e.g. <http://localhost:47100/kooste/>.
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:47100/kooste/q/dev-ui/welcome>.
 
