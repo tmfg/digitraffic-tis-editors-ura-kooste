@@ -49,6 +49,18 @@ If you want to build an _über-jar_, execute the following command:
 
 The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
 
+## Building the production container image
+
+The production container image is built with [Jib](https://quarkiverse.github.io/quarkiverse-docs/quarkus-container-image/dev/index.html#container-image-jib) (`quarkus-container-image-jib` extension), **not** a Dockerfile — Jib builds the image directly from the Maven build without needing a Docker daemon. The base JVM image is set via `quarkus.jib.base-jvm-image` in `application.properties`.
+
+To build and load the image locally:
+
+```shell script
+./mvnw install -Dquarkus.container-image.build=true
+```
+
+CI builds and pushes the image the same way in `.github/workflows/push_image.yaml`, additionally setting `quarkus.container-image.group`/`name`/`tag` to target the ECR repository.
+
 ## Creating a native executable
 
 You can create a native executable using:
