@@ -186,7 +186,7 @@ public class VacoTask {
      * @throws InterruptedException
      */
     private EntryResponse[] listEntries() throws IOException, InterruptedException {
-        String path = String.format("/api/queue?businessId=%s&count=1000&name=%s", this.businessId, NETEX_PACKAGE_NAME);
+        String path = String.format("/api/queue?businessId=%s&count=25&name=%s", this.businessId, NETEX_PACKAGE_NAME);
         URI uri = this.vacoUri.resolve(path);
         byte[] res = KoosteHttpClient.get(uri, getHeaders());
         return deSerializeObject(res, EntryResponse[].class);
