@@ -142,6 +142,8 @@ public class VacoTask {
             else {
                 logger.info("GTFS package already exists: {}", gtfsUri);
             }
+        } else {
+            logger.warn("Downloading GTFS package was not successful: none of 25 entries had GTFS conversion completed at this point");
         }
     }
 
