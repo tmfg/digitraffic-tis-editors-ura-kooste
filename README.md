@@ -8,11 +8,23 @@ If you want to learn more about Quarkus, please visit its website: <https://quar
 
 ## Running the application in dev mode
 
+Dev mode requires two environment variables to be set, otherwise startup fails with
+`Failed to load config value of type class java.lang.String for: ...`:
+
+```shell script
+export KOOSTE_BUSINESS_ID=<business-id>
+export KOOSTE_VACO_URL=<vaco-url>
+```
+
 You can run your application in dev mode that enables live coding using:
 
 ```shell script
 ./mvnw compile quarkus:dev
 ```
+
+Dev mode starts Dev Services (Testcontainers) for Keycloak and LocalStack automatically,
+which requires a running Docker daemon and can take 30-40 seconds. The app listens on
+port `47100` under the `/kooste` root path, e.g. <http://localhost:47100/kooste/>.
 
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:47100/kooste/q/dev-ui/welcome>.
 
@@ -36,6 +48,18 @@ If you want to build an _über-jar_, execute the following command:
 ```
 
 The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+
+## Building the production container image
+
+The production container image is built with [Jib](https://quarkus.io/guides/container-image#jib) (`quarkus-container-image-jib` extension), **not** a Dockerfile — Jib builds the image directly from the Maven build without needing a Docker daemon. The base JVM image is set via `quarkus.jib.base-jvm-image` in `application.properties`.
+
+To build and load the image locally:
+
+```shell script
+./mvnw install -Dquarkus.container-image.build=true
+```
+
+CI builds and pushes the image the same way in `.github/workflows/push_image.yaml`, additionally setting `quarkus.container-image.group`/`name`/`tag` to target the ECR repository.
 
 ## Creating a native executable
 
