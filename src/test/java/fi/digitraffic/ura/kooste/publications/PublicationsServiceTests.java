@@ -9,6 +9,7 @@ import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -52,6 +53,37 @@ class PublicationsServiceTests {
     private Executable assertMetricsTarget(boolean expected, String codespace, String label) {
         Publication publication = new Publication(codespace, label, ZonedDateTime.now(), "url", "file.zip", "NeTEx", 100L);
         return () -> assertThat(PublicationsService.isMetricsTarget(publication), equalTo(expected));
+    }
+
+    /**
+     * Regression test for a bug where merged publications (e.g. URA's combined "all" export) were
+     * stamped with the current wall-clock time instead of the real timestamp of the source data,
+     * which made the freshness metric always report ~0 age and never detect stale data.
+     */
+    @Test
+    void resolvesLatestTimestampFromSourcePublications() {
+        ZonedDateTime oldest = ZonedDateTime.now().minusDays(2);
+        ZonedDateTime newest = ZonedDateTime.now().minusHours(1);
+        List<Publication> publications = List.of(
+            publicationWithTimestamp(oldest),
+            publicationWithTimestamp(newest),
+            publicationWithTimestamp(oldest.plusHours(1))
+        );
+
+        assertThat(PublicationsService.resolveLatestTimestamp(publications), equalTo(newest));
+    }
+
+    @Test
+    void resolvesLatestTimestampFallsBackToNowWhenEmpty() {
+        ZonedDateTime before = ZonedDateTime.now();
+        ZonedDateTime resolved = PublicationsService.resolveLatestTimestamp(List.of());
+        ZonedDateTime after = ZonedDateTime.now();
+
+        assertThat(!resolved.isBefore(before) && !resolved.isAfter(after), equalTo(true));
+    }
+
+    private Publication publicationWithTimestamp(ZonedDateTime timestamp) {
+        return new Publication("codespace", "label", timestamp, "url", "file.zip", "NeTEx", 100L);
     }
 
     /**

@@ -204,6 +204,19 @@ public class PublicationsService {
         return METRICS_TARGET_LABELS.contains(publication.label());
     }
 
+    /**
+     * Merged publications (e.g. URA's combined "all" export) have no single source file of their own,
+     * so their freshness must be derived from the most recent of the publications they were merged from -
+     * using the current wall-clock time here would make the freshness metric always report ~0 age,
+     * regardless of whether the underlying source data actually changed.
+     */
+    protected static ZonedDateTime resolveLatestTimestamp(List<Publication> publications) {
+        return publications.stream()
+            .map(Publication::timestamp)
+            .max(Comparator.naturalOrder())
+            .orElseGet(ZonedDateTime::now); // defensive fallback; publications is never empty in practice
+    }
+
     private String createObjectName(String codespace, String label, String format) {
         return codespace + "-" + slugger.slugify(label) + "-" + format + ".zip";
     }
@@ -272,7 +285,7 @@ public class PublicationsService {
         return new Publication(
             aggregateName,
             allPublication,
-            ZonedDateTime.now(),
+            resolveLatestTimestamp(publications),
             buildCloudFrontUrl(objectName),
             objectName,
             publisher.format().displayName,
