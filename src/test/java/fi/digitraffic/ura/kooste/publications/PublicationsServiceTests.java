@@ -1,9 +1,11 @@
 package fi.digitraffic.ura.kooste.publications;
 
+import fi.digitraffic.ura.kooste.publications.model.Publication;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 import java.nio.charset.StandardCharsets;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -29,6 +31,27 @@ class PublicationsServiceTests {
 
     private Executable assertPath(String expected, String... parts) {
         return () -> assertThat("Expected '" + expected + "' from " + Arrays.toString(parts), PublicationsService.pathify(parts), equalTo(expected));
+    }
+
+    /**
+     * Only the 4 tracked exports (URA-all, PETI-all, PETI-rail, PETI-all-GTFS) should
+     * feed the size/freshness metrics - other labels (per-operator URA exports etc.)
+     * would otherwise create unbounded custom metric dimension combinations.
+     */
+    @Test
+    void identifiesMetricsTargetPublications() {
+        assertAll(
+            assertMetricsTarget(true, "URA", "all"),
+            assertMetricsTarget(true, "PETI", "all"),
+            assertMetricsTarget(true, "PETI", "rail"),
+            assertMetricsTarget(false, "URA", "SomeOperator"),
+            assertMetricsTarget(false, "PETI", "UNSPECIFIED")
+        );
+    }
+
+    private Executable assertMetricsTarget(boolean expected, String codespace, String label) {
+        Publication publication = new Publication(codespace, label, ZonedDateTime.now(), "url", "file.zip", "NeTEx", 100L);
+        return () -> assertThat(PublicationsService.isMetricsTarget(publication), equalTo(expected));
     }
 
     /**

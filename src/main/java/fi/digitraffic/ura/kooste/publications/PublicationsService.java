@@ -2,6 +2,7 @@ package fi.digitraffic.ura.kooste.publications;
 
 import com.github.slugify.Slugify;
 import fi.digitraffic.ura.kooste.http.KoosteHttpClient;
+import fi.digitraffic.ura.kooste.metrics.PublicationMetricsService;
 import fi.digitraffic.ura.kooste.publications.model.Publication;
 import fi.digitraffic.ura.kooste.publications.model.Publisher;
 import fi.digitraffic.ura.kooste.publications.model.Publisher.IPublisher;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -60,10 +62,14 @@ public class PublicationsService {
 
     private static final String UNSPECIFIED_LABEL = "UNSPECIFIED";
 
+    /** Labels of the exports tracked for size/freshness metrics - see isMetricsTarget(). */
+    private static final Set<String> METRICS_TARGET_LABELS = Set.of("all", "rail");
+
     private final AtomicReference<List<Publication>> publications = new AtomicReference<>(List.of());
 
     private final S3Client s3Client;
     private final S3TransferManager s3TransferManager;
+    private final PublicationMetricsService metricsService;
     private final String fromBucket;
     private final String toBucket;
     private final String toPrefix;
@@ -73,6 +79,7 @@ public class PublicationsService {
 
     public PublicationsService(S3Client s3Client,
                                S3TransferManager s3TransferManager,
+                               PublicationMetricsService metricsService,
                                @ConfigProperty(name = "kooste.tasks.s3copy.from.bucket") String fromBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.bucket") String toBucket,
                                @ConfigProperty(name = "kooste.tasks.s3copy.to.prefix") String toPrefix,
@@ -81,6 +88,7 @@ public class PublicationsService {
     ) {
         this.s3Client = Objects.requireNonNull(s3Client);
         this.s3TransferManager = Objects.requireNonNull(s3TransferManager);
+        this.metricsService = Objects.requireNonNull(metricsService);
         this.fromBucket = Objects.requireNonNull(fromBucket);
         this.toBucket = Objects.requireNonNull(toBucket);
         this.toPrefix = Objects.requireNonNull(toPrefix);
@@ -181,7 +189,19 @@ public class PublicationsService {
 
         exportedPublications.sort(Comparator.comparing(Publication::codespace)
             .thenComparing(Publication::label));
+
+        exportedPublications.stream().filter(PublicationsService::isMetricsTarget).forEach(metricsService::publishMetrics);
+
         return exportedPublications;
+    }
+
+    /**
+     * Only the well-known combos (URA-all, PETI-all, PETI-rail) map to the 4 alarm dimension
+     * combinations tracked in digitraffic-tis-editors-infra - other labels (e.g. per-operator
+     * URA exports) are intentionally excluded to avoid unbounded custom metric dimensions.
+     */
+    protected static boolean isMetricsTarget(Publication publication) {
+        return METRICS_TARGET_LABELS.contains(publication.label());
     }
 
     private String createObjectName(String codespace, String label, String format) {
@@ -198,7 +218,7 @@ public class PublicationsService {
                     .destinationKey(pathify(toPrefix, objectName));
             });
         }).completionFuture().get();
-        return new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName, p.format());
+        return new Publication(p.codespace(), p.label(), p.timestamp(), buildCloudFrontUrl(objectName), objectName, p.format(), p.sizeBytes());
     }
 
     /**
@@ -255,7 +275,8 @@ public class PublicationsService {
             ZonedDateTime.now(),
             buildCloudFrontUrl(objectName),
             objectName,
-            publisher.format().displayName);
+            publisher.format().displayName,
+            outputBytes.size());
     }
 
     /**
@@ -313,7 +334,8 @@ public class PublicationsService {
                 LocalDateTime.parse(matcher.group("timestamp"), TIMESTAMP_PATTERN).atZone(ZoneOffset.UTC).withZoneSameInstant(HELSINKI_TZ),
                 key,
                 fileName,
-                publisher.format().displayName));
+                publisher.format().displayName,
+                s3Object.size()));
         } else {
             logger.debug("Key {} did not match expected file pattern {}", key, publisher.exportPattern().pattern());
             return Optional.empty();
