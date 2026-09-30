@@ -9,6 +9,7 @@
     <th class="label" scope="col">{msg:table_header_label}</th>
     <th scope="col">{msg:table_header_timestamp}</th>
     <th class="format">{msg:table_header_format}</th>
+    <th class="size" scope="col">{msg:table_header_size}</th>
     <th class="url" scope="col">{msg:table_header_downloadLink}</th>
   </tr>
   </thead>
@@ -19,6 +20,7 @@
     <td>{publication.label}</td>
     <td>{time:format(publication.timestamp, msg:publication_timestamp_format, locale)}</td>
     <td>{publication.format}</td>
+    <td class="size">{publication.formattedSize}</td>
     <td class="url"><a href="{publication.url}" target="_blank" rel="nofollow noopener noreferrer">{publication.fileName}</a></td>
   </tr>
   {/for}

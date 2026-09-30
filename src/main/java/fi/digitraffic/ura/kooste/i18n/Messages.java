@@ -30,6 +30,9 @@ public interface Messages {
     @Message("Download")
     String table_header_downloadLink();
 
+    @Message("Size")
+    String table_header_size();
+
     @Message("MMMM d, yyyy 'at' h:mm:ss a")
     String publication_timestamp_format();
 }
