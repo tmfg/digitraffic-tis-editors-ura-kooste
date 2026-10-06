@@ -116,6 +116,11 @@
             <groupId>io.quarkiverse.amazonservices</groupId>
             <artifactId>quarkus-amazon-s3-transfer-manager</artifactId>
         </dependency>
+        <!-- No quarkiverse extension exists for CloudWatch, use the plain AWS SDK client -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>cloudwatch</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-container-image-jib</artifactId>
