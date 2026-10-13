@@ -1,8 +1,14 @@
 package fi.digitraffic.ura.kooste.publications;
 
+import fi.digitraffic.ura.kooste.metrics.PublicationMetricsService;
 import fi.digitraffic.ura.kooste.publications.model.Publication;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
@@ -15,8 +21,42 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class PublicationsServiceTests {
+
+    /**
+     * Regression: S3 returns at most 1000 keys per call, so the newest rail zips were dropped once
+     * inbound/peti/ passed 1000 objects.
+     */
+    @Test
+    void listsAllObjectsAcrossPages() {
+        S3Client s3Client = mock(S3Client.class);
+        when(s3Client.listObjectsV2Paginator(any(ListObjectsV2Request.class))).thenCallRealMethod();
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("inbound/peti/PETI-NeTEx-all-20260101000000.zip").build())
+                .isTruncated(true)
+                .nextContinuationToken("page-2")
+                .build(),
+            ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("inbound/peti/PETI-NeTEx-rail-20261011150018.zip").build())
+                .isTruncated(false)
+                .build());
+
+        // "prd" avoids s3Client.utilities(), which the mock does not stub.
+        PublicationsService service = new PublicationsService(
+            s3Client, mock(S3TransferManager.class), mock(PublicationMetricsService.class),
+            "from-bucket", "to-bucket", "exports/", "prd", "300");
+
+        List<String> keys = service.listObjectsInBucket("from-bucket", "inbound/peti/").stream().map(S3Object::key).toList();
+
+        assertThat(keys, equalTo(List.of(
+            "inbound/peti/PETI-NeTEx-all-20260101000000.zip",
+            "inbound/peti/PETI-NeTEx-rail-20261011150018.zip")));
+    }
 
     @Test
     void pathifyConcatenations() {

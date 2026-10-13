@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
@@ -317,13 +316,14 @@ public class PublicationsService {
         return sb.toString();
     }
 
-    private List<S3Object> listObjectsInBucket(String bucket, String prefix) {
+    List<S3Object> listObjectsInBucket(String bucket, String prefix) {
         ListObjectsV2Request listObjectsV2Request = ListObjectsV2Request.builder()
             .bucket(bucket)
             .prefix(prefix)
             .build();
-        ListObjectsV2Response listObjectsV2Response = s3Client.listObjectsV2(listObjectsV2Request);
-        List<S3Object> contents = listObjectsV2Response.contents();
+        // A single listObjectsV2 call returns at most 1000 keys.
+        List<S3Object> contents = new ArrayList<>();
+        s3Client.listObjectsV2Paginator(listObjectsV2Request).contents().forEach(contents::add);
         logger.trace("Number of objects in the bucket: {}", contents.size());
         if (logger.isTraceEnabled()) {
             contents.forEach(s -> logger.trace(s.toString()));
